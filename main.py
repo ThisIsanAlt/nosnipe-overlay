@@ -1,11 +1,12 @@
 import time, os
-from os import system
+import os
 import platform
 from colorama import Fore
 import requests
 import sqlite3
 import math
-import timeit
+
+os.system("color")
 
 'TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)'
 
@@ -300,7 +301,6 @@ Select which mode to display stats from: ''')
     conn.close()
     printBWTable()
     getStats('fqrs')
-    getstatsstart = time.time()
     getStats('fqrs')
-    getstatsend = time.time()
-    print(f'stats time: {getstatsend - getstatsstart}')
+    print(getDuelsPrestigeMode(502))
+    input('')
