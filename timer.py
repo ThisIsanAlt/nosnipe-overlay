@@ -34,7 +34,7 @@ def get_api_key():
         except:
             return
 
-def getStats(player):
+def getStats(player, data):
     global uuids
     global mode
     api_key = get_api_key()
@@ -48,7 +48,7 @@ def getStats(player):
     else:
         uuid = uuids.get(player)
 
-    data = requests.get(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}").json()
+
 
     if not data['success']:
         print(data['cause'])
@@ -58,17 +58,17 @@ def getStats(player):
     elif mode == 'bw':
         getBWStats(data, uuid)
     
-def getDuelsPrestigeMode(wins):
+def getDuelsPrestigeColor(wins):
     if wins < 50:
-        return f'\033[238m{wins}{Fore.RESET}'
+        return Fore.YELLOW
     elif wins < 100:
         return Fore.LIGHTBLACK_EX
     elif wins < 200:
         return Fore.RESET
     elif wins < 500:
-        return f'\033[214m{wins}{Fore.RESET}'
+        return Fore.YELLOW
     elif wins < 1000:
-        return f'\033[26m{wins}{Fore.RESET}'
+        return Fore.BLUE
     elif wins < 2000:
         return Fore.GREEN
     elif wins < 5000:
@@ -87,27 +87,24 @@ def getBridgeStats(data, uuid):
         name = data['player']['playername']
     wins = data['player']['stats']['Duels'].get('bridge_duel_wins', 0) + data['player']['stats']['Duels'].get('bridge_doubles_wins', 0) \
         + data['player']['stats']['Duels'].get('bridge_four_wins', 0) + data['player']['stats']['Duels'].get('bridge_2v2v2v2_wins', 0) + data['player']['stats']['Duels'].get('bridge_3v3v3v3_wins', 0)
-    
-    losses = data['player']['stats']['Duels'].get('bridge_duel_losses', 0) + data['player']['stats']['Duels'].get('bridge_doubles_losses', 0) \
+    wlr = wins/data['player']['stats']['Duels'].get('bridge_duel_losses', 0) + data['player']['stats']['Duels'].get('bridge_doubles_losses', 0) \
         + data['player']['stats']['Duels'].get('bridge_four_losses', 0) + data['player']['stats']['Duels'].get('bridge_2v2v2v2_losses', 0) + data['player']['stats']['Duels'].get('bridge_3v3v3v3_losses', 0)
-
-    wlr = wins/losses    
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Duels']['current_bridge_winstreak']
     cage = data['player']['stats']['Duels']['active_cage'][5:]
-    prestige = getDuelsPrestigeMode(wins)
+    prestigecolor = getDuelsPrestigeColor(wins)
     
     if uuid in blacklist:
         print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
-         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
+         {name} | {prestigecolor}{wins} {Fore.RESET} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
     elif wins < params[1] or networkLevel < params[3]:
         print(f'''       {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
-         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
+         {name} | {prestigecolor}{wins} {Fore.RESET} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}''')
     elif wins < params[2] or networkLevel < params[4]:
         print(f'''       {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
-         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
+         {name} | {prestigecolor}{wins} {Fore.RESET} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}''')
     else:
         print(f'         {name} | {prestigecolor}{wins} {Fore.RESET} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}')
@@ -171,15 +168,15 @@ def getBWStats(data, uuid):
     ws = data['player']['stats']['Bedwars']['winstreak']
     
     if uuid in blacklist:
-        print(f'''      {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
+        print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
          {name} | {prestige} | {wins} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
         {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
     elif wins < params[1] or networkLevel < params[3]:
-        print(f'''      {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
+        print(f'''       {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
          {name} | {prestige} | {wins} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
         {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}''')
     elif wins < params[2] or networkLevel < params[4]:
-        print(f'''      {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
+        print(f'''       {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
          {name} | {prestige} | {wins} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
         {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}''')
     else:
@@ -272,35 +269,27 @@ def validateToken(token):
 
 if __name__ == "__main__":
     version = "0.0.1[BETA]"
-    printTitle()
-    f'''
-            {Fore.GREEN}Developed by sweting#9238 on Discord {Fore.BLUE}| Discord:
-            {Fore.GREEN}THIS OVERLAY IS AVAILABLE ON GITHUB
-
-            {Fore.RED}This overlay is closed-source to prevent circumvention. To help improve the overlay and report known cheaters/alts, please join the Discord.{Fore.RESET}
-            {version}
-        '''
     meta = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()
     blacklist = meta['blacklist']
-    if meta['version'] != version:
-        input('You are not on the latest version! Get the latest version at https://thisisanalt.github.io/nosnipe.html \nPress enter to continue.')
-    if version in meta['version-blacklist']:
-        print(f'{Fore.YELLOW} This version is blacklisted and cannot be used. Please update to the latest version at https://thisisanalt.github.io/nosnipe.html')
+    mode = 'bw'
     conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    data = cursor.execute('SELECT CriticalWins FROM INFO').fetchall()
-    if len(data) == 0:
-        init()
-    mode = input('''
-Supported modes: 
-    - "bridge"
-    - "bw" 
-Select which mode to display stats from: ''')
-    params = cursor.execute('SELECT * FROM INFO').fetchone()
+    c = conn.cursor()
+    params = c.execute('SELECT * FROM INFO').fetchone()
     conn.close()
-    printBWTable()
-    getStats('fqrs')
-    getstatsstart = time.time()
-    getStats('fqrs')
-    getstatsend = time.time()
-    print(f'stats time: {getstatsend - getstatsstart}')
+    times = []
+    data = requests.get(f"https://api.hypixel.net/player?key={get_api_key()}&uuid=c78a19a8156e4ddfbdbab58d0696ba53").json()
+    for i in range(10000):
+        timestart = time.perf_counter()
+        getStats('fqrs', data)
+        timeend = time.perf_counter()
+        walltime = timeend-timestart
+        times.append(walltime)
+        if i % 1000 == 0:
+            print(f'HEARTBEAT: {i}')
+    avg = 0.0
+    for i in times:
+        avg+=i
+        avg/=2
+    print('Average time:', avg)
+    print('Last time', walltime)
+        

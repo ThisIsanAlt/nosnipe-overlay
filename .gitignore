@@ -109,6 +109,8 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+Scripts/
+pyvenv.cfg
 
 # Spyder project settings
 .spyderproject
@@ -127,7 +129,3 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-# API keys stored here, can't have mine being leaked
-database.db
-secrets.txt
