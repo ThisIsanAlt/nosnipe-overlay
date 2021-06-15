@@ -61,15 +61,15 @@ def getStats(player):
     
 def getDuelsPrestigeMode(wins):
     if wins < 50:
-        return f'\033[238m{wins}{Fore.RESET}'
+        return wins
     elif wins < 100:
         return Fore.LIGHTBLACK_EX
     elif wins < 200:
         return Fore.RESET
     elif wins < 500:
-        return f'\033[214m{wins}{Fore.RESET}'
+        return f'{Fore.YELLOW}{wins}{Fore.RESET}'
     elif wins < 1000:
-        return f'\033[26m{wins}{Fore.RESET}'
+        return f'{Fore.CYAN}{wins}{Fore.RESET}'
     elif wins < 2000:
         return Fore.GREEN
     elif wins < 5000:
@@ -103,15 +103,15 @@ def getBridgeStats(data, uuid):
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
     elif wins < params[1] or networkLevel < params[3]:
-        print(f'''       {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
+        print(f'''        {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}''')
     elif wins < params[2] or networkLevel < params[4]:
-        print(f'''       {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
+        print(f'''        {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}''')
     else:
-        print(f'         {name} | {prestigecolor}{wins} {Fore.RESET} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}')
+        print(f'         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}')
 
 def getBWPrestige(star):
     if star < 100:
@@ -119,24 +119,24 @@ def getBWPrestige(star):
     elif star < 200 or (star < 1200 and star > 1100):
         return star
     elif star < 300 or (star < 1300 and star > 1200):
-        return f'\033[214m{star}{Fore.RESET}'
+        return f'{Fore.YELLOW}{star}{Fore.RESET}'
     elif star < 400 or (star < 1400 and star > 1300):
-        return f'\033[33m{star}{Fore.RESET}'
+        return f'{Fore.CYAN}{star}{Fore.RESET}'
     elif star < 500 or (star < 1500 and star > 1400):
         return f'{Fore.GREEN}{star}{Fore.RESET}'
     elif star < 600 or (star < 1600 and star > 1500):
-        return f'\033[30m{star}{Fore.RESET}'
+        return f'{Fore.CYAN}{star}{Fore.RESET}'
     elif star < 700 or (star < 1700 and star > 1600):
         return f'{Fore.RED}{star}{Fore.RESET}'
     elif star < 800 or (star < 1800 and star > 1700):
-        return f'\033[205m{star}{Fore.RESET}'
+        return f'{Fore.LIGHTMAGENTA_EX}{star}{Fore.RESET}'
     elif star < 900 or (star < 1900 and star > 1800):
-       return f'\033[26m{star}{Fore.RESET}'
+       return f'{Fore.BLUE}{star}{Fore.RESET}'
     elif star < 1000:
         return f'{Fore.MAGENTA}{star}{Fore.RESET}'
     elif star < 1100:
         star = str(star)
-        return f'\033[202m{star[0]}{Fore.YELLOW}{star[1]}{Fore.LIGHTGREEN_EX}{star[2]}\033[39m{star[3]}{Fore.RESET}'
+        return f'{Fore.RED}{star[0]}{Fore.YELLOW}{star[1]}{Fore.LIGHTGREEN_EX}{star[2]}{Fore.CYAN}{star[3]}{Fore.RESET}'
     elif star < 2000:
         return f'{Fore.MAGENTA}{star}{Fore.RESET}'
     elif star < 2100:
@@ -144,10 +144,10 @@ def getBWPrestige(star):
         return f'{Fore.LIGHTBLACK_EX}{star[0]}{Fore.RESET}{star[1]}{star[2]}{Fore.LIGHTBLACK_EX}{Fore.RESET}'
     elif star < 2200:
         star = str(star)
-        return f'{star[0]}{Fore.LIGHTYELLOW_EX}{star[1]}{star[2]}\033[172m{star[3]}{Fore.RESET}'
+        return f'{star[0]}{Fore.LIGHTYELLOW_EX}{star[1]}{star[2]}{star[3]}{Fore.RESET}'
     elif star < 2300:
         star = str(star)
-        return f'\033[172m{star[0]}{Fore.RESET}{star[1]}{star[2]}\033[33m{star[4]}{Fore.RESET}'
+        return f'{Fore.YELLOW}{star[0]}{Fore.RESET}{star[1]}{star[2]}{Fore.CYAN}{star[4]}{Fore.RESET}'
 
 def getBWStats(data, uuid):
     global params
@@ -208,14 +208,14 @@ def readFile(thefile):
 def printBridgeTable():
     printTitle()
     title = f'''
-            IGN    | Wins | WLR | NW LVL | WS | Active Cage
+        IGN    | Wins | WLR | NW LVL | WS | Active Cage
         '''
     print(title)
 
 def printBWTable():
     printTitle()
     title = f'''
-            IGN    |  ☆  | Wins | WLR | NW LVL | WS 
+        IGN    |  ☆  | Wins | WLR | NW LVL | WS 
         '''
     print(title)
 
@@ -243,7 +243,7 @@ def init():
         except:
             print('Try again: Your answers should be in numbers using digits 0-9.')
             continue
-        if (CriticalWins < WarningWins < 100) and (CriticalNWLVL < WarningNWLVL < 50):
+        if (100 >= CriticalWins > WarningWins) and (50 >= CriticalNWLVL > WarningNWLVL):
             break
         print('Try again: Critical flag criteria should be lower than warning flag criteria and warning wins and network level should be below 100 and 50 respectively.')
     conn = sqlite3.connect('database.db')
@@ -272,7 +272,7 @@ def validateToken(token):
     pass
 
 if __name__ == "__main__":
-    version = "0.0.1[BETA]"
+    version = "0.0.2[ALPHA]"
     printTitle()
     f'''
             {Fore.GREEN}Developed by sweting#9238 on Discord {Fore.BLUE}| Discord:
@@ -286,21 +286,22 @@ if __name__ == "__main__":
     if meta['version'] != version:
         input('You are not on the latest version! Get the latest version at https://thisisanalt.github.io/nosnipe.html \nPress enter to continue.')
     if version in meta['version-blacklist']:
-        print(f'{Fore.YELLOW} This version is blacklisted and cannot be used. Please update to the latest version at https://thisisanalt.github.io/nosnipe.html')
+        input(f'{Fore.YELLOW} This version is blacklisted and cannot be used. Please update to the latest version at https://thisisanalt.github.io/nosnipe.html')
+        quit()     
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
     data = cursor.execute('SELECT CriticalWins FROM INFO').fetchall()
     if len(data) == 0:
         init()
-    mode = input('''
-Supported modes: 
+    while True:
+        mode = input('''Supported modes: 
     - "bridge"
     - "bw" 
 Select which mode to display stats from: ''')
+        if mode not in ['bridge', 'bw']:
+            print('Try again: Please use either "bridge" or "bw"')
+            continue
+        break
     params = cursor.execute('SELECT * FROM INFO').fetchone()
     conn.close()
-    printBWTable()
-    getStats('fqrs')
-    getStats('fqrs')
-    print(getDuelsPrestigeMode(502))
-    input('')
+    getrunningclient()
