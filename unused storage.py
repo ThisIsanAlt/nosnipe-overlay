@@ -1,4 +1,6 @@
+import colorama
 from colorama import Fore
+colorama.init()
 
 def getBWPrestige(star):
     if star < 100:
@@ -55,3 +57,5 @@ def getDuelsPrestigeMode(wins):
         return Fore.LIGHTYELLOW_EX
     else:
         return Fore.MAGENTA
+
+print(getDuelsPrestigeMode(600))

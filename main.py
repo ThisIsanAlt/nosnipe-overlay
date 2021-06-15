@@ -1,16 +1,16 @@
 import time, os
-import os
+from os import system
 import platform
 from colorama import Fore
 import requests
 import sqlite3
 import math
-
-os.system("color")
-
+import asyncio
 'TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)'
 
 uuids = {}
+loop = asyncio.get_event_loop()
+system("color")
 
 def recieve_api_key(api_key):
         conn = sqlite3.connect('database.db')
@@ -35,51 +35,51 @@ def get_api_key():
         except:
             return
 
-def getStats(player):
+async def getStats(player):
     global uuids
     global mode
     api_key = get_api_key()
 
     if player not in uuids:
-        uuid = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id']
-        if not uuid:
+        try:
+            uuid = requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id']
+        except:
             print(f'IGN {player} not found, player is most likely nicked')
             return
         uuids[player] = uuid
     else:
         uuid = uuids.get(player)
-
     data = requests.get(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}").json()
 
     if not data['success']:
         print(data['cause'])
         return
     elif mode == 'bridge':
-        getBridgeStats(data, uuid)
+        await getBridgeStats(data, uuid)
     elif mode == 'bw':
-        getBWStats(data, uuid)
+        await getBWStats(data, uuid)
     
 def getDuelsPrestigeMode(wins):
     if wins < 50:
         return wins
     elif wins < 100:
-        return Fore.LIGHTBLACK_EX
+        return f'{Fore.LIGHTBLACK_EX}{wins}{Fore.RESET}'
     elif wins < 200:
-        return Fore.RESET
+        return f'{Fore.RESET}{wins}'
     elif wins < 500:
         return f'{Fore.YELLOW}{wins}{Fore.RESET}'
     elif wins < 1000:
         return f'{Fore.CYAN}{wins}{Fore.RESET}'
     elif wins < 2000:
-        return Fore.GREEN
+        return f'{Fore.GREEN}{wins}{Fore.RESET}'
     elif wins < 5000:
-        return Fore.RED
+        return f'{Fore.RED}{wins}{Fore.RESET}'
     elif wins < 10000:
-        return Fore.LIGHTYELLOW_EX
+        return f'{Fore.LIGHTYELLOW_EX}{wins}{Fore.RESET}'
     else:
-        return Fore.MAGENTA
+        return f'{Fore.MAGENTA}{wins}{Fore.RESET}'
 
-def getBridgeStats(data, uuid):
+async def getBridgeStats(data, uuid):
     global params
     global blacklist
     try:
@@ -149,7 +149,7 @@ def getBWPrestige(star):
         star = str(star)
         return f'{Fore.YELLOW}{star[0]}{Fore.RESET}{star[1]}{star[2]}{Fore.CYAN}{star[4]}{Fore.RESET}'
 
-def getBWStats(data, uuid):
+async def getBWStats(data, uuid):
     global params
     global blacklist
     try:
@@ -186,33 +186,14 @@ def getBWStats(data, uuid):
     else:
         print(f'         {name} | {prestige} | {wins} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} ')
 
-def readFile(thefile):
-    thefile.seek(0,2)
-    while True:
-            line = thefile.readline()
-            if not line:
-                time.sleep(0.1)
-            elif ("[Client thread/INFO]: [CHAT]", "has joined") in line:
-                player = line[41:].split(' ')[0]
-                getStats(player)
-            elif "[Client thread/INFO]: [CHAT] Your new API key is" in line:
-                recieve_api_key(line[61:])
-            elif ("[Client thread/INFO]: [CHAT]", "Sending you to") in line:
-                if 'windows' in platform.system().lower():
-                    system('cls')
-                if mode == 'bridge':
-                    printBridgeTable()
-                elif mode == 'bw':
-                    printBWTable()
-            
-def printBridgeTable():
+async def printBridgeTable():
     printTitle()
     title = f'''
         IGN    | Wins | WLR | NW LVL | WS | Active Cage
         '''
     print(title)
 
-def printBWTable():
+async def printBWTable():
     printTitle()
     title = f'''
         IGN    |  ☆  | Wins | WLR | NW LVL | WS 
@@ -232,23 +213,55 @@ def printTitle():
                                                             Overlay by sweting{Fore.RESET}'''
     print(title)
 
+async def readFile(thefile):
+    autocheck = True
+    input('Press ENTER once connected to Hypixel.')
+    print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
+    thefile.seek(0,2)
+    while True:
+        line = thefile.readline()
+        if not line:
+            time.sleep(0.1)
+        if autocheck:
+            if ("[Client thread/INFO]: [CHAT]" and "has joined") in line:
+                player = line[40:].split(' ')[0]
+                await getStats(player)
+            elif "[Client thread/INFO]: [CHAT] Your new API key is" in line:
+                recieve_api_key(line[61:])
+            elif ("[Client thread/INFO]: [CHAT] Sending you to") in line:
+                if 'windows' in platform.system().lower():
+                    system('cls')
+                if mode == 'bridge':
+                    await printBridgeTable()
+                elif mode == 'bw':
+                    await printBWTable()
+        elif ("[Client thread/INFO]: [CHAT] Connecting to") in line:
+            if "hypixel" not in line:
+                print(f'Autocheck {Fore.LIGHTRED_EX}INACTIVE{Fore.RESET}')
+            else:
+                print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
+        
 def init():
-    print(f'{Fore.CYAN}Welcome! I noticed this is your first time here. I\'ll as you a couple of questions regarding parameters for this overlay. Please answer using digits 0-9.')
+    print(f'{Fore.CYAN}Welcome! I noticed this is your first time here. I\'ll as you a couple of questions regarding parameters for this overlay. Please answer using digits 0-9.{Fore.RESET}')
     while True:
         try:
             CriticalWins = int(input('What is the minimum amount of wins a player should have before a critical flag is raised? '))
             WarningWins = int(input('What is the minimum amount of wins a player should have before a warning flag is raised? '))
             CriticalNWLVL = int(input('What is the minimum network level a player should be before a critical flag is raised? '))
-            WarningNWLVL = int(input(f'What is the minimum network level a player should be before a warning flag is raised? {Fore.RESET}'))
+            WarningNWLVL = int(input(f'What is the minimum network level a player should be before a warning flag is raised?'))
         except:
             print('Try again: Your answers should be in numbers using digits 0-9.')
             continue
         if (100 >= CriticalWins > WarningWins) and (50 >= CriticalNWLVL > WarningNWLVL):
             break
         print('Try again: Critical flag criteria should be lower than warning flag criteria and warning wins and network level should be below 100 and 50 respectively.')
+    api_key = input('To run, this application requires your API key. You can enter that now, or press ENTER and run /api new in-game to generate a new API key.')
     conn = sqlite3.connect('database.db')
     c = conn.cursor()
-    c.execute('INSERT INTO INFO(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL) VALUES (?, ?, ?, ?)',(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL,))
+    if api_key == '':
+        c.execute('INSERT INTO INFO(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL) VALUES (?, ?, ?, ?)',(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL,))
+    else:
+        c.execute('INSERT INTO INFO(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL, APIKey) VALUES (?, ?, ?, ?, ?)',(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL, api_key,))
     conn.commit()
     
 def getrunningclient():
@@ -266,7 +279,8 @@ def getrunningclient():
             logfile = open(os.getenv("APPDATA")+"/.minecraft/logs/latest.log", "r")
         else:
             print('Try again: Your answer should be a single character and be either "l", "b", or "v".')
-        readFile(logfile)
+            continue
+        return logfile
 
 def validateToken(token):
     pass
@@ -289,9 +303,12 @@ if __name__ == "__main__":
         input(f'{Fore.YELLOW} This version is blacklisted and cannot be used. Please update to the latest version at https://thisisanalt.github.io/nosnipe.html')
         quit()     
     conn = sqlite3.connect('database.db')
-    cursor = conn.cursor()
-    data = cursor.execute('SELECT CriticalWins FROM INFO').fetchall()
-    if len(data) == 0:
+    c = conn.cursor()
+    try:
+        if len(c.execute('SELECT CriticalWins FROM INFO').fetchall()) == 0:
+            init()
+    except:
+        c.execute('CREATE TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)')
         init()
     while True:
         mode = input('''Supported modes: 
@@ -302,6 +319,6 @@ Select which mode to display stats from: ''')
             print('Try again: Please use either "bridge" or "bw"')
             continue
         break
-    params = cursor.execute('SELECT * FROM INFO').fetchone()
+    params = c.execute('SELECT * FROM INFO').fetchone()
     conn.close()
-    getrunningclient()
+    loop.run_until_complete(readFile(getrunningclient()))
