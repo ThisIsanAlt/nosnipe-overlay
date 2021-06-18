@@ -13,16 +13,16 @@ loop = asyncio.get_event_loop()
 system("color")
 
 def recieve_api_key(api_key):
-        conn = sqlite3.connect('database.db')
-        c = conn.cursor()
-        try:
-            c.execute(f'UPDATE INFO SET APIKey = "{api_key}"')
-        except Exception:
-            c.execute(f'INSERT INTO INFO(APIKey) VALUES ("{api_key}")')
-        finally:
-            c.commit()
-            print('API key recieved!')
-            conn.close()
+    conn = sqlite3.connect('database.db')
+    c = conn.cursor()
+    try:
+        c.execute(f'UPDATE INFO SET APIKey = "{api_key}"')
+    except Exception:
+        c.execute(f'INSERT INTO INFO(APIKey) VALUES ("{api_key}")')
+    finally:
+        c.commit()
+        print('API key recieved!')
+        conn.close()
 
 def get_api_key():
         conn = sqlite3.connect('database.db')
@@ -92,10 +92,14 @@ async def getBridgeStats(data, uuid):
     losses = data['player']['stats']['Duels'].get('bridge_duel_losses', 0) + data['player']['stats']['Duels'].get('bridge_doubles_losses', 0) \
         + data['player']['stats']['Duels'].get('bridge_four_losses', 0) + data['player']['stats']['Duels'].get('bridge_2v2v2v2_losses', 0) + data['player']['stats']['Duels'].get('bridge_3v3v3v3_losses', 0)
 
-    wlr = wins/losses    
+    try:
+        wlr = wins/losses
+    except ZeroDivisionError:
+        wlr = wins
+
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Duels']['current_bridge_winstreak']
-    cage = data['player']['stats']['Duels']['active_cage'][5:]
+    cage = data['player']['stats']['Duels'].get('active_cage', 'cage_default')[5:]
     prestige = getDuelsPrestigeMode(wins)
     
     if uuid in blacklist:
@@ -167,7 +171,11 @@ async def getBWStats(data, uuid):
     losses = data['player']['stats']['Bedwars'].get('eight_one_losses_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_losses_bedwars', 0) \
         + data['player']['stats']['Bedwars'].get('four_three_losses_bedwars', 0)  + data['player']['stats']['Bedwars'].get('four_four_losses_bedwars', 0)
 
-    wlr = wins/losses    
+    try:
+        wlr = wins/losses
+    except ZeroDivisionError:
+        wlr = wins
+          
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Bedwars']['winstreak']
     
@@ -235,7 +243,7 @@ async def readFile(thefile):
                     await printBridgeTable()
                 elif mode == 'bw':
                     await printBWTable()
-        elif ("[Client thread/INFO]: [CHAT] Connecting to") in line:
+        elif ("[Client thread/INFO]: Connecting to") in line:
             if "hypixel" not in line:
                 print(f'Autocheck {Fore.LIGHTRED_EX}INACTIVE{Fore.RESET}')
             else:
