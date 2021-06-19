@@ -13,16 +13,16 @@ loop = asyncio.get_event_loop()
 system("color")
 
 def recieve_api_key(api_key):
-    conn = sqlite3.connect('database.db')
-    c = conn.cursor()
-    try:
-        c.execute(f'UPDATE INFO SET APIKey = "{api_key}"')
-    except Exception:
-        c.execute(f'INSERT INTO INFO(APIKey) VALUES ("{api_key}")')
-    finally:
-        c.commit()
-        print('API key recieved!')
-        conn.close()
+        conn = sqlite3.connect('database.db')
+        c = conn.cursor()
+        try:
+            c.execute(f'UPDATE INFO SET APIKey = "{api_key}"')
+        except Exception:
+            c.execute(f'INSERT INTO INFO(APIKey) VALUES ("{api_key}")')
+        finally:
+            c.commit()
+            print('API key recieved!')
+            conn.close()
 
 def get_api_key():
         conn = sqlite3.connect('database.db')
@@ -49,11 +49,7 @@ async def getStats(player):
         uuids[player] = uuid
     else:
         uuid = uuids.get(player)
-    
-    try:
-        data = requests.get(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}").json()
-    except:
-        print('Could not reach the Hypixel API. It may be offline or experiencing an outage.')
+    data = requests.get(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}").json()
 
     if not data['success']:
         print(data['cause'])
@@ -62,7 +58,6 @@ async def getStats(player):
         await getBridgeStats(data, uuid)
     elif mode == 'bw':
         await getBWStats(data, uuid)
-
     
 def getDuelsPrestigeMode(wins):
     if wins < 50:
@@ -97,14 +92,10 @@ async def getBridgeStats(data, uuid):
     losses = data['player']['stats']['Duels'].get('bridge_duel_losses', 0) + data['player']['stats']['Duels'].get('bridge_doubles_losses', 0) \
         + data['player']['stats']['Duels'].get('bridge_four_losses', 0) + data['player']['stats']['Duels'].get('bridge_2v2v2v2_losses', 0) + data['player']['stats']['Duels'].get('bridge_3v3v3v3_losses', 0)
 
-    try:
-        wlr = wins/losses
-    except ZeroDivisionError:
-        wlr = wins
-
+    wlr = wins/losses    
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Duels']['current_bridge_winstreak']
-    cage = data['player']['stats']['Duels'].get('active_cage', 'cage_default')[5:]
+    cage = data['player']['stats']['Duels']['active_cage'][5:]
     prestige = getDuelsPrestigeMode(wins)
     
     if uuid in blacklist:
@@ -122,7 +113,7 @@ async def getBridgeStats(data, uuid):
     else:
         print(f'         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}')
 
-def getBWPrestige(star):  # sourcery no-metrics
+def getBWPrestige(star):
     if star < 100:
         return f'{Fore.LIGHTBLACK_EX}{star}{Fore.RESET}'
     elif star < 200 or (star < 1200 and star > 1100):
@@ -176,11 +167,7 @@ async def getBWStats(data, uuid):
     losses = data['player']['stats']['Bedwars'].get('eight_one_losses_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_losses_bedwars', 0) \
         + data['player']['stats']['Bedwars'].get('four_three_losses_bedwars', 0)  + data['player']['stats']['Bedwars'].get('four_four_losses_bedwars', 0)
 
-    try:
-        wlr = wins/losses
-    except ZeroDivisionError:
-        wlr = wins
-          
+    wlr = wins/losses    
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Bedwars']['winstreak']
     
@@ -248,11 +235,11 @@ async def readFile(thefile):
                     await printBridgeTable()
                 elif mode == 'bw':
                     await printBWTable()
-            elif ("[Client thread/INFO]: Connecting to") in line:
+            elif ("[Client thread/INFO]: [CHAT] Connecting to") in line:
                 if "hypixel" not in line:
                     print(f'Autocheck {Fore.LIGHTRED_EX}INACTIVE{Fore.RESET}')
                     autocheck = False
-        elif ("[Client thread/INFO]: Connecting to") in line:
+        elif ("[Client thread/INFO]: [CHAT] Connecting to") in line:
             if "hypixel" in line:
                 print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
                 autocheck = True
