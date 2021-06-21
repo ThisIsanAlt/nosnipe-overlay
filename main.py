@@ -6,6 +6,7 @@ import requests
 import sqlite3
 import math
 import asyncio
+from multiprocessing import Process
 'TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)'
 
 uuids = {}
@@ -16,7 +17,7 @@ def recieve_api_key(api_key):
     '''
     func to recieve and input api key into db
     '''
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('./lib/database.db')
     c = conn.cursor()
     try:
         c.execute(f'UPDATE INFO SET APIKey = "{api_key}"')
@@ -28,7 +29,7 @@ def recieve_api_key(api_key):
         conn.close()
 
 def get_api_key():
-        conn = sqlite3.connect('database.db')
+        conn = sqlite3.connect('./lib/database.db')
         c = conn.cursor()
         data = c.execute('SELECT APIKey FROM INFO')
         data = data.fetchone()
@@ -284,7 +285,7 @@ def printTitle():
                                                             Overlay by sweting{Fore.RESET}'''
     print(title)
 
-async def readFile(thefile):  # sourcery skip: remove-redundant-if
+async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
     autocheck = True
     hypixel = True
     global mode
@@ -303,10 +304,16 @@ async def readFile(thefile):  # sourcery skip: remove-redundant-if
             #check if player join
             if ("[Client thread/INFO]: [CHAT]" and "has joined") in line:
                 player = line[40:].split(' ')[0]
+                
+                if requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id'] == '6654f4f13302483fa4a15e957d489ce9':
+                    print('lol no you think youd get to use this to dodge shitters? fuck you lmfao')
+                    break
+
                 if autocheck:
-                    await getStats(player, mode)
+                    x = Process(target=getStats, args=(player, mode,))
                 else:
-                    await getBlacklist(player)
+                    x = Process(target=getBlacklist, args=(player,))
+                x.start()
 
             #clear place for new table/new players when send to new server
             if (("[Client thread/INFO]: [CHAT] Sending you to") in line) and autocheck:
@@ -321,7 +328,8 @@ async def readFile(thefile):  # sourcery skip: remove-redundant-if
 
             #log API key
             if "[Client thread/INFO]: [CHAT] Your new API key is" in line:
-                recieve_api_key(line[61:])
+                x = Process(recieve_api_key(line[61:]))
+                x.start()
                 print(f'API key "{line[61:]}" recieved and logged!')
 
             #handle connect to anything but hypixel
@@ -335,14 +343,33 @@ async def readFile(thefile):  # sourcery skip: remove-redundant-if
                 print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
             hypixel = True
 
-        #manual statcheck logic, possible move into hypixel clause? - fix
+        #commands logic, possible move into hypixel clause? - fix
         if('[Client thread/INFO]: [CHAT] Player "" not found') in line:
-            if 'line[12321] startswith sc-b-' in line:
-                await getStats(line, 'bridge')
-            elif 'line startswith sc-uhcd-':
-                await getStats(line, 'uhcd')
-            elif 'line startswith sc-bw-':
-                await getStats(line, 'bw')
+            #statcheck
+            if line.startswith('sc-'):
+                if 'line[12321] startswith sc-b-':
+                    x = Process(target=getStats, args=(line, 'bridge',))
+                elif 'line startswith sc-uhcd-':
+                    x = Process(target=getStats, args=(line, 'uhcd',))
+                elif 'line startswith sc-bw-':
+                    x = Process(target=getStats, args=(line, 'bw',))
+                x.start()
+            
+            #mode swap
+            if line.startswith('swm-'):
+                if 'line[12321] startswith swm-b-':
+                    mode = 'bridge'
+                elif 'line startswith swm-uhcd-':
+                    mode = 'uhcd'
+                elif 'line startswith swm-bw-':
+                    mode = 'bw'
+            
+            #autocheck
+            if line.startswith('ac-'):
+                if 'line[12321] startswith ac-off':
+                    autocheck = False
+                elif 'line startswith ac-on':
+                    autocheck = True
 
         #disappear when game starts, unused - fix
         if '[Client thread/INFO]: [CHAT]' and ('The Bridge Duel' or 'The Bridge Doubles' or 'The Bridge Teams') in line:
@@ -363,12 +390,12 @@ def init():
         except:
             print('Try again: Your answers should be in numbers using digits 0-9.')
             continue
-        if (100 >= CriticalWins > WarningWins) and (50 >= CriticalNWLVL > WarningNWLVL):
+        if (100 >= WarningWins > CriticalWins) and (50 >= WarningNWLVL > CriticalNWLVL):
             break
         print('Try again: Critical flag criteria should be lower than warning flag criteria and warning wins and network level should be below 100 and 50 respectively.')
     api_key = input('To run, this application requires your API key. You can enter that now, or press ENTER and run /api new in-game to generate a new API key.')
     print(api_key)
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('./lib/database.db')
     c = conn.cursor()
     if api_key == '':
         c.execute('INSERT INTO INFO(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL) VALUES (?, ?, ?, ?)',(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL,))
@@ -433,7 +460,7 @@ if __name__ == "__main__":
         quit()     
     
     #see if database needs to be initialized
-    conn = sqlite3.connect('database.db')
+    conn = sqlite3.connect('./lib/database.db')
     c = conn.cursor()
     try:
         if len(c.execute('SELECT CriticalWins FROM INFO').fetchall()) == 0:
