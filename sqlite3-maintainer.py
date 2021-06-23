@@ -4,6 +4,6 @@ conn = sqlite3.connect('database.db')
 c = conn.cursor()
 
 #c.execute('CREATE TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)')
-c.execute('UPDATE INFO SET APIKey = "5a07d930-e276-462b-8eb4-f884eb365574"')
+c.execute('UPDATE INFO SET APIKey = "14ceed52-6d03-4d9a-91a4-8b063b3f07e7"')
 print(c.execute('SELECT * FROM INFO').fetchall())
 conn.commit()
