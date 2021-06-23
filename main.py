@@ -343,33 +343,33 @@ async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
                 print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
             hypixel = True
 
-        #commands logic, possible move into hypixel clause? - fix
-        if('[Client thread/INFO]: [CHAT] Player "" not found') in line:
+        #commands logic, possible move into hypixel clause?
+        if('[Client thread/INFO]: [CHAT] Can\'t find a player by the name of') in line:
+            arg = line[67:-1]
             #statcheck
-            if line.startswith('sc-'):
-                if 'line[12321] startswith sc-b-':
-                    x = Process(target=getStats, args=(line, 'bridge',))
-                elif 'line startswith sc-uhcd-':
-                    x = Process(target=getStats, args=(line, 'uhcd',))
-                elif 'line startswith sc-bw-':
-                    x = Process(target=getStats, args=(line, 'bw',))
+            if arg.startswith('sc-'):
+                if arg.startswith('sc-b'):
+                    x = Process(target=getStats, args=(arg[4:], 'bridge',))
+                elif arg.startswith('sc-uhcd'):
+                    x = Process(target=getStats, args=(arg[7:], 'uhcd',))
+                elif arg.startswith('sc-bw'):
+                    x = Process(target=getStats, args=(arg[5:], 'bw',))
                 x.start()
             
             #mode swap
-            if line.startswith('swm-'):
-                if 'line[12321] startswith swm-b-':
+            if arg.startswith('swm-'):
+                if arg.startswith('swm-b'):
                     mode = 'bridge'
-                elif 'line startswith swm-uhcd-':
+                elif arg.startswith('swm-uhcd'):
                     mode = 'uhcd'
-                elif 'line startswith swm-bw-':
+                elif arg.startswith('swm-bw'):
                     mode = 'bw'
             
             #autocheck
-            if line.startswith('ac-'):
-                if 'line[12321] startswith ac-off':
-                    autocheck = False
-                elif 'line startswith ac-on':
-                    autocheck = True
+            if arg == 'ac-off':
+                autocheck = False
+            elif arg == 'ac-on':
+                autocheck = True
 
         #disappear when game starts, unused - fix
         if '[Client thread/INFO]: [CHAT]' and ('The Bridge Duel' or 'The Bridge Doubles' or 'The Bridge Teams') in line:
