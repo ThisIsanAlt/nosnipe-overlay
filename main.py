@@ -5,14 +5,15 @@ from colorama import Fore
 import requests
 import sqlite3
 import math
-from multiprocessing import Process
+from asyncio import sleep, get_event_loop
 'TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)'
-client = ''
 
+loop = get_event_loop()
+client = ''
 uuids = {}
 system("color")
 
-def recieve_api_key(api_key):
+async def recieve_api_key(api_key):
     '''
     func to recieve and input api key into db
     '''
@@ -27,20 +28,20 @@ def recieve_api_key(api_key):
         print('API key recieved!')
         conn.close()
 
-def get_api_key():
+def getDBInfo():
         conn = sqlite3.connect('./lib/database.db')
         c = conn.cursor()
-        data = c.execute('SELECT APIKey FROM INFO')
+        data = c.execute('SELECT * FROM INFO')
         data = data.fetchone()
         conn.close()
         try:
-            return data[0]
+            return data
         except:
             return
 
-def getStats(player, mode):
+async def getStats(player, mode):
     global uuids
-    api_key = get_api_key()
+    api_key = getDBInfo()[0]
 
     if player not in uuids:
         try:
@@ -51,8 +52,6 @@ def getStats(player, mode):
         uuids[player] = uuid
     else:
         uuid = uuids.get(player)
-
-    print(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}")
     
     try:
         data = requests.get(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}").json()
@@ -60,22 +59,29 @@ def getStats(player, mode):
         print('Could not reach the Hypixel API. It may be offline or experiencing an outage.')
 
     if not data['success']:
-        print(data['cause'])
-        return
-    elif mode == 'bridge':
-         getBridgeStats(data, uuid)
+        if data['cause'] == 'Key throttle':
+            await sleep(1)
+            data = requests.get(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}").json()
+            if not data['success']:
+                print(f'Ratelimited, abandoning attempt for player {player}')
+                return
+        else:    
+            print(data['cause'])
+            return
+    if mode == 'bridge':
+        await getBridgeStats(data, uuid)
     elif mode == 'bw':
-         getBWStats(data, uuid)
+        await getBWStats(data, uuid)
     elif mode == 'uhcd':
-         getUHCDStats(data, uuid)
+        await getUHCDStats(data, uuid)
 
-def getBlacklist(player):
+async def getBlacklist(player):
     if requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id'] in blacklist:
         print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
                                             Player {player} is blacklisted.
         {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
     
-def getDuelsPrestigeMode(wins):
+async def getDuelsPrestigeMode(wins):
     if wins < 50:
         return wins
     elif wins < 100:
@@ -95,8 +101,8 @@ def getDuelsPrestigeMode(wins):
     else:
         return f'{Fore.MAGENTA}{wins}{Fore.RESET}'
 
-def getBridgeStats(data, uuid):
-    global params
+async def getBridgeStats(data, uuid):
+    params = getDBInfo()
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name'] 
@@ -115,8 +121,8 @@ def getBridgeStats(data, uuid):
 
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Duels']['current_bridge_winstreak']
-    cage = data['player']['stats']['Duels'].get('active_cage', 'cage_default')[5:]
-    prestige = getDuelsPrestigeMode(wins)
+    cage = data['player']['stats']['Duels'].get('active_cage', 'cage_async default')[5:]
+    prestige = await getDuelsPrestigeMode(wins)
     
     if uuid in blacklist:
         print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
@@ -133,8 +139,8 @@ def getBridgeStats(data, uuid):
     else:
         print(f'         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}')
 
-def getUHCDStats(data, uuid):
-    global params
+async def getUHCDStats(data, uuid):
+    params = getDBInfo()
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name']
@@ -154,7 +160,7 @@ def getUHCDStats(data, uuid):
 
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Duels'].get('current_uhc_winstreak')
-    prestige = getDuelsPrestigeMode(wins)
+    prestige = await getDuelsPrestigeMode(wins)
     
     if uuid in blacklist:
         print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
@@ -171,7 +177,7 @@ def getUHCDStats(data, uuid):
     else:
         print(f'         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws}')
 
-def getBWPrestige(star):  # sourcery no-metrics
+async def getBWPrestige(star):  # sourcery no-metrics
     if star < 100:
         return f'{Fore.LIGHTBLACK_EX}{star}{Fore.RESET}'
     elif star < 200 or (star < 1200 and star > 1100):
@@ -209,8 +215,8 @@ def getBWPrestige(star):  # sourcery no-metrics
     else:
         return star
 
-def getBWStats(data, uuid):
-    global params
+async def getBWStats(data, uuid):
+    params = getDBInfo()
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name'] 
@@ -219,7 +225,7 @@ def getBWStats(data, uuid):
     
     #start prestige search while other data is being calculated
     star = data['player']['achievements']['bedwars_level']
-    prestige =  getBWPrestige(star)
+    prestige =  await getBWPrestige(star)
 
     wins = data['player']['stats']['Bedwars'].get('eight_one_wins_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_wins_bedwars', 0) \
         + data['player']['stats']['Bedwars'].get('four_three_wins_bedwars', 0)  + data['player']['stats']['Bedwars'].get('four_four_wins_bedwars', 0)
@@ -250,22 +256,19 @@ def getBWStats(data, uuid):
     else:
         print(f'         {name} | {prestige} | {wins} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} ')
 
-def printBridgeTable():
-    printTitle()
+async def printBridgeTable():
     title = f'''
         IGN    | Wins | WLR | NW LVL | WS | Active Cage
         '''
     print(title)
 
-def printDuelsModeTable():
-    printTitle()
+async def printDuelsModeTable():
     title = f'''
         IGN    | Wins | WLR | NW LVL | WS 
         '''
     print(title)
 
-def printBWTable():
-    printTitle()
+async def printBWTable():
     title = f'''
         IGN    |  ☆  | Wins | WLR | NW LVL | WS 
         '''
@@ -286,11 +289,7 @@ def printTitle():
                                                             Overlay by sweting{Fore.RESET}'''
     print(title)
 
-def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
-    if client == 'l':
-        chatthread = 'main'
-    else:
-        chatthread = 'Client thread'
+async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
     autocheck = True
     hypixel = True
     global mode
@@ -301,94 +300,108 @@ def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
     while True:
         line = thefile.readline()
         if not line:
-            time.sleep(0.1)
+            await sleep(0.1)
 
         #autocheck + blacklist logic, handle server join/leave
         if hypixel:
 
             #check if player join
-            if (f"[{chatthread}/INFO]: [CHAT]" and "has joined") in line:
+            if (f"/INFO]: [CHAT]" and "has joined") in line:
                 player = line.split(' ')[3]
 
                 try:
                     if requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id'] == '6654f4f13302483fa4a15e957d489ce9':
                         print('lol no you think youd get to use this to dodge shitters? fuck you lmfao')
+                        input('Press ENTER to quit.')
                         break
                 except:
                     pass
 
                 if autocheck:
-                    x = Process(target=getStats, args=(player, mode,))
+                    await getStats(player, mode)
                 else:
-                    x = Process(target=getBlacklist, args=(player,))
-                x.start()
+                    await getBlacklist(player)
 
             #clear place for new table/new players when send to new server
-            if ((f"[{chatthread}/INFO]: [CHAT] Sending you to") in line) and autocheck:
+            if ((f"/INFO]: [CHAT] Sending you to") in line) and autocheck:
+                printTitle()
                 if mode == 'bridge':
-                     printBridgeTable()
+                    await printBridgeTable()
                 elif mode == 'bw':
-                     printBWTable()
+                    await printBWTable()
+                    print(f'{Fore.GREEN}Do /who to update member list!{Fore.RESET}')
                 #change this line to include other duels mode since they use same table
                 elif mode == 'uhcd':
-                     printDuelsModeTable()
+                    await printDuelsModeTable()
 
+            if '/INFO]: [CHAT] ONLINE:' in line:
+                printTitle()
+                await printBWTable()
+                players = line[40:-1].split(',') if client == 'l' else line[48:-1].split(',')
+                for player in players:
+                    await getStats(player, mode)
+                    await sleep(.5)
 
             #log API key
-            if f"[{chatthread}/INFO]: [CHAT] Your new API key is" in line:
+            if f"/INFO]: [CHAT] Your new API key is" in line:
                 api_key = line.split(' ')[8][:-1]
-                x = Process(recieve_api_key(api_key))
-                x.start()
+                await recieve_api_key(api_key)
                 print(f'API key "{api_key}" recieved and logged!')
 
             #handle connect to anything but hypixel
-            if not line == '': print(line)
             if (
-                f"[{chatthread}/INFO]: Connecting to" in line
+                f"/INFO]: Connecting to" in line
                 and 'hypixel' not in line
             ):
                 print(f'Autocheck {Fore.LIGHTRED_EX}INACTIVE{Fore.RESET}')
                 hypixel = False
 
-        elif (f"[{chatthread}/INFO]: Connecting to" and "hypixel") in line:
+        elif (f"/INFO]: Connecting to" in line) and ("hypixel" in line):
             if autocheck:
                 print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
             hypixel = True
 
         #commands logic, possible move into hypixel clause?
-        if(f'[{chatthread}/INFO]: [CHAT] Can\'t find a player by the name of') in line:
-            arg = line[67:-2]
+        if f'/INFO]: [CHAT] Can\'t find a player by the name of' in line:
+            arg = line.split(' ')[11]
             print(arg)
+
             #statcheck
-            if arg.startswith('sc-'):
-                if arg.startswith('sc-b-'):
-                    x = Process(target=getStats, args=(arg[5:], 'bridge',))
-                elif arg.startswith('sc-uhcd-'):
-                    x = Process(target=getStats, args=(arg[8:], 'uhcd',))
-                elif arg.startswith('sc-bw-'):
-                    x = Process(target=getStats, args=(arg[6:], 'bw',))
-                x.start()
+            if arg.startswith("'sc-"):
+                if arg.startswith("'sc-b-"):
+                    await printBridgeTable()
+                    await getStats(arg[6:-2], 'bridge',)
+                elif arg.startswith("'sc-uhcd-"):
+                    await printDuelsModeTable()
+                    await getStats(arg[9:-2], 'uhcd',)
+                elif arg.startswith("'sc-bw-"):
+                    await printBWTable()
+                    await getStats(arg[7:-2], 'bw',)
 
             #mode swap
-            if arg.startswith('swm-'):
-                if arg[4:] not in ['b', 'bw', 'uhcd']:
-                    print(f'{Fore.RED}Invalid mode!{Fore.RESET}')
-                if arg == 'swm-b':
+            if arg.startswith("'swm-"):
+                if arg.startswith("'swm-b'"):
                    mode = 'bridge'
-                elif arg == 'swm-uhcd':
+                   print(f'{Fore.GREEN}Mode swapped to bridge!{Fore.RESET}')
+                elif arg.startswith("'swm-uhcd'"):
                     mode = 'uhcd'
-                elif arg == 'swm-bw':
+                    print(f'{Fore.GREEN}Mode swapped to uhcd!{Fore.RESET}')
+                elif arg.startswith("'swm-bw'"):
                     mode = 'bw'
-                print(f'{Fore.GREEN}Mode swapped to {mode}!{Fore.RESET}')
+                    print(f'{Fore.GREEN}Mode swapped to bw!{Fore.RESET}')
+                else:
+                    print(f'{Fore.RED}Invalid mode!{Fore.RESET}')
 
             #autocheck
-            if arg == 'ac-off':
+            if arg.startswith("'ac-off'"):
                 autocheck = False
-            elif arg == 'ac-on':
+                print(f'Autocheck {Fore.RED}INACTIVE{Fore.RESET}')
+            elif arg.startswith("'ac-on'"):
                 autocheck = True
+                print(f'Autocheck {Fore.GREEN}ACTIVE{Fore.RESET}')
 
         #disappear when game starts, unused - fix
-        if f'[{chatthread}/INFO]: [CHAT]' and ('The Bridge Duel' or 'The Bridge Doubles' or 'The Bridge Teams') in line:
+        if f'/INFO]: [CHAT]' and ('The Bridge Duel' or 'The Bridge Doubles' or 'The Bridge Teams') in line:
             #disappear
             pass
         
@@ -440,12 +453,6 @@ def getrunningclient():
             continue
         return logfile
 
-def validateToken(token):
-    '''
-    unused, probably will be renamed to login
-    '''
-    pass
-
 if __name__ == "__main__":
     version = "0.0.2[ALPHA]"
 
@@ -462,7 +469,7 @@ if __name__ == "__main__":
             {version}
 
             Commands:
-                /t sc-[player] to manually check stats
+                /t sc-[mode]-[player] to manually check stats
                 /t swm-[bridge/bw/uhcd] to switch modes
                 /t ac-[on/off] to turn autocheck on or off
         ''')
@@ -470,12 +477,15 @@ if __name__ == "__main__":
     #get blacklist, possibly move this into getstats for live blacklist update?
     meta = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()
     blacklist = meta['blacklist']
+    print(meta['version-messages'].get("all", ''))
+    print(meta['version-messages'].get(version, ''))
 
     #check if version outdated and if version blacklisted
     if meta['version'] != version:
         input('You are not on the latest version! Get the latest version at https://thisisanalt.github.io/nosnipe.html \nPress enter to continue.')
     if version in meta['version-blacklist']:
-        input(f'{Fore.YELLOW} This version is blacklisted and cannot be used. Please update to the latest version at https://thisisanalt.github.io/nosnipe.html')
+        input(f'{Fore.YELLOW} This version is blacklisted and cannot be used. Please update to the latest version at https://thisisanalt.github.io/nosnipe.html\n\
+        Press ENTER to quit.')
         quit()
     
     #see if database needs to be initialized
@@ -501,4 +511,4 @@ Select which mode to display stats from: ''')
         break
     params = c.execute('SELECT * FROM INFO').fetchone()
     conn.close()
-    readFile(getrunningclient())
+    loop.run_until_complete(readFile(getrunningclient()))
