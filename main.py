@@ -3,7 +3,7 @@ from os import system
 import platform
 from colorama import Fore
 import requests
-import sqlite3
+import json
 import math
 from asyncio import sleep, get_event_loop
 'TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)'
@@ -17,31 +17,25 @@ async def recieve_api_key(api_key):
     '''
     func to recieve and input api key into db
     '''
-    conn = sqlite3.connect('./lib/database.db')
-    c = conn.cursor()
-    try:
-        c.execute(f'UPDATE INFO SET APIKey = ?', (api_key,))
-    except Exception:
-        c.execute(f'INSERT INTO INFO(APIKey) VALUES (?)', (api_key,))
-    finally:
-        conn.commit()
-        print('API key recieved!')
-        conn.close()
+    
+    with open('config.json', 'r') as f:
+        data = json.load(f)
+        data['api_key'] = api_key
+        with open('config.json', 'w') as f:
+            json.dump(data, f)
 
 def getDBInfo():
-        conn = sqlite3.connect('./lib/database.db')
-        c = conn.cursor()
-        data = c.execute('SELECT * FROM INFO')
-        data = data.fetchone()
-        conn.close()
-        try:
-            return data
-        except:
-            return
+    '''
+    func to get api key
+    '''
+
+    with open('config.json', 'r') as f:
+        data = json.load(f)
+        return data.get('api_key')
 
 async def getStats(player, mode):
     global uuids
-    api_key = getDBInfo()[0]
+    api_key = getDBInfo()
 
     if player not in uuids:
         try:
@@ -65,6 +59,9 @@ async def getStats(player, mode):
             if not data['success']:
                 print(f'Ratelimited, abandoning attempt for player {player}')
                 return
+        elif data['cause'] == 'Invalid API key':
+            print('API key invalid! Run "/api new" to generate a new one!')
+            return
         else:    
             print(data['cause'])
             return
@@ -104,7 +101,6 @@ async def getDuelsPrestigeMode(wins):
         return f'{Fore.MAGENTA}{wins}{Fore.RESET}'
 
 async def getBridgeStats(data, uuid):
-    params = getDBInfo()
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name'] 
@@ -127,22 +123,21 @@ async def getBridgeStats(data, uuid):
     prestige = await getDuelsPrestigeMode(wins)
     
     if uuid in blacklist:
-        print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
+        print(f'''          {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
-    elif wins < params[1] or networkLevel < params[3]:
-        print(f'''        {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
+    elif wins < 50 or networkLevel < 10:
+        print(f'''          {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}''')
-    elif wins < params[2] or networkLevel < params[4]:
-        print(f'''        {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
+    elif wins < 100 or networkLevel < 25:
+        print(f'''          {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}
         {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}''')
     else:
         print(f'         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}')
 
 async def getUHCDStats(data, uuid):
-    params = getDBInfo()
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name']
@@ -165,15 +160,15 @@ async def getUHCDStats(data, uuid):
     prestige = await getDuelsPrestigeMode(wins)
     
     if uuid in blacklist:
-        print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
+        print(f'''          {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws}
         {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
-    elif wins < params[1] or networkLevel < params[3]:
-        print(f'''        {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
+    elif wins < 50 or networkLevel < 10:
+        print(f'''          {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws}
         {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}''')
-    elif wins < params[2] or networkLevel < params[4]:
-        print(f'''        {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
+    elif wins < 100 or networkLevel < 25:
+        print(f'''          {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
          {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws}
         {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}''')
     else:
@@ -218,7 +213,6 @@ async def getBWPrestige(star):  # sourcery no-metrics
         return star
 
 async def getBWStats(data, uuid):
-    params = getDBInfo()
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name'] 
@@ -235,10 +229,12 @@ async def getBWStats(data, uuid):
     losses = data['player']['stats']['Bedwars'].get('eight_one_losses_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_losses_bedwars', 0) \
         + data['player']['stats']['Bedwars'].get('four_three_losses_bedwars', 0)  + data['player']['stats']['Bedwars'].get('four_four_losses_bedwars', 0)
     
-    fkdr = data['player']['stats']['Bedwars'].get('eight_one_final_kills_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_final_kills_bedwars', 0) \
-        + data['player']['stats']['Bedwars'].get('four_three_final_kills_bedwars', 0)  + data['player']['stats']['Bedwars'].get('four_four_final_kills_bedwars', 0) / \
-            data['player']['stats']['Bedwars'].get('eight_one_final_deaths_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_final_deaths_bedwars', 0) \
+    fks = data['player']['stats']['Bedwars'].get('eight_one_final_kills_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_final_kills_bedwars', 0) \
+        + data['player']['stats']['Bedwars'].get('four_three_final_kills_bedwars', 0)  + data['player']['stats']['Bedwars'].get('four_four_final_kills_bedwars', 0)
+    fds = data['player']['stats']['Bedwars'].get('eight_one_final_deaths_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_final_deaths_bedwars', 0) \
         + data['player']['stats']['Bedwars'].get('four_three_final_deaths_bedwars', 0)  + data['player']['stats']['Bedwars'].get('four_four_final_deaths_bedwars', 0)
+        
+    fkdr = fks/fds
 
     try:
         wlr = wins/losses
@@ -249,28 +245,28 @@ async def getBWStats(data, uuid):
     ws = data['player']['stats']['Bedwars']['winstreak']
     
     if uuid in blacklist:
-        print(f'''      {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
-         {name} | ☆{prestige} | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
+        print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
+         {name} |  {prestige}  | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
         {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
-    elif wins < params[1] or networkLevel < params[3]:
-        print(f'''      {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
-         {name} | ☆{prestige} | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
+    elif wins < 50 or networkLevel < 10:
+        print(f'''        {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}
+         {name} |  {prestige}  | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
         {Fore.RED}---------------------CRITICAL---------------------{Fore.RESET}''')
-    elif wins < params[2] or networkLevel < params[4]:
-        print(f'''      {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
-         {name} | ☆{prestige} | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
+    elif wins < 100 or networkLevel < 25:
+        print(f'''        {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}
+         {name} |  {prestige}  | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} 
         {Fore.YELLOW}---------------------WARNING---------------------{Fore.RESET}''')
     else:
-        print(f'         {name} | {prestige} | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} ')
+        print(f'         {name} | ☆{prestige} | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} ')
 
 async def printBridgeTable():
-    print('''        IGN    | Wins | WLR | NW LVL | WS | Active Cage''')
+    print('''          IGN    | Wins | WLR | NW LVL | WS | Active Cage''')
 
 async def printDuelsModeTable():
-    print('''        IGN    | Wins | WLR | NW LVL | WS ''')
+    print('''          IGN    | Wins | WLR | NW LVL | WS ''')
 
 async def printBWTable():
-    print('''        IGN    |  ☆  | Wins | FKDR | WLR | NW LVL | WS ''')
+    print('''          IGN    | Star | Wins | FKDR | WLR | NW LVL | WS ''')
 
 def printTitle():
     if 'windows' in platform.system().lower():
@@ -313,6 +309,7 @@ async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
                         if requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id'] == '6654f4f13302483fa4a15e957d489ce9':
                             input('lol no you think youd get to use this to dodge shitter? fuck you lmfao\nPress ENTER to quit.')
                             break
+                        dehku = True
                     except:
                         pass
 
@@ -336,23 +333,24 @@ async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
             if '/INFO]: [CHAT] ONLINE:' in line:
                 printTitle()
                 await printBWTable()
-                players = line[40:-1].split(',') if client == 'l' else line[48:-1].split(',')
+                if client == 'l': players = line[38:-1].split(',') 
+                else: line[47:-1].split(',')
                 for player in players:
-                    await getStats(player, mode)
+                    await getStats(player[1:], mode)
                     await sleep(.5)
 
             #log API key
             if f"/INFO]: [CHAT] Your new API key is" in line:
                 api_key = line.split(' ')[8][:-1]
                 await recieve_api_key(api_key)
-                print(f'API key "{api_key}" recieved and logged!')
+                print(f'{Fore.GREEN}API key "{api_key}" recieved and logged!{Fore.RESET}')
 
             #handle connect to anything but hypixel
             if (
                 f"/INFO]: Connecting to" in line
-                and not line.endswith('hypixel.net')
+                and not line.split(',')[0].endswith('hypixel.net')
             ):
-                print(f'Autocheck {Fore.LIGHTRED_EX}INACTIVE{Fore.RESET}')
+                print(f'Autocheck {Fore.LIGHTRED_EX}INACTIVE{Fore.RESET} (Connected to Hypixel)')
                 hypixel = False
             #commands logic, possible move into hypixel clause?
             if f'/INFO]: [CHAT] Can\'t find a player by the name of' in line:
@@ -374,7 +372,7 @@ async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
                         await getStats(arg[7:-2], 'bw',)
 
                 #mode swap
-                if arg.startswith("'swm-"):
+                elif arg.startswith("'swm-"):
                     if arg.startswith("'swm-b'"):
                         mode = 'bridge'
                         print(f'{Fore.GREEN}Mode swapped to bridge!{Fore.RESET}')
@@ -388,48 +386,31 @@ async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
                         print(f'{Fore.RED}Invalid mode!{Fore.RESET}')
 
                 #autocheck
-                if arg.startswith("'ac-off'"):
+                elif arg.startswith("'ac-off'"):
                     autocheck = False
                     print(f'Autocheck {Fore.RED}INACTIVE{Fore.RESET}')
                 elif arg.startswith("'ac-on'"):
                     autocheck = True
-                    print(f'Autocheck {Fore.GREEN}ACTIVE{Fore.RESET}')
+                    print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
+                
+                elif arg.startswith("'apikey-register-"):
+                    api_key = arg[7:-2]
+                    recieve_api_key(api_key)
+                    print(f'{Fore.GREEN}API Key "{api_key}" recieved and logged!{Fore.RESET}')
+                
+                elif arg.startswith("'nosnipe-quit'"):
+                    quit()
 
         #disappear when game starts, unused - fix
         if f'/INFO]: [CHAT]' and ('The Bridge Duel' or 'The Bridge Doubles' or 'The Bridge Teams') in line:
             #disappear
             pass
 
-        elif (f"/INFO]: Connecting to" in line) and (line.endswith('hypixel.net')):
+        elif (f"/INFO]: Connecting to" in line
+                and line.split(',')[0].endswith('hypixel.net')):
             if autocheck:
-                print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
-            hypixel = True
-        
-def init():
-    '''
-    initialize DB on generation
-    '''
-    print(f'{Fore.CYAN}Welcome! I noticed this is your first time here. I\'ll as you a couple of questions regarding parameters for this overlay. Please answer using digits 0-9.{Fore.RESET}')
-    while True:
-        try:
-            CriticalWins = int(input('What is the minimum amount of wins a player should have before a critical flag is raised? '))
-            WarningWins = int(input('What is the minimum amount of wins a player should have before a warning flag is raised? '))
-            CriticalNWLVL = int(input('What is the minimum network level a player should be before a critical flag is raised? '))
-            WarningNWLVL = int(input(f'What is the minimum network level a player should be before a warning flag is raised? '))
-        except:
-            print('Try again: Your answers should be in numbers using digits 0-9.')
-            continue
-        if (100 >= WarningWins > CriticalWins) and (50 >= WarningNWLVL > CriticalNWLVL):
-            break
-        print('Try again: Critical flag criteria should be lower than warning flag criteria and warning wins and network level should be below 100 and 50 respectively.')
-    api_key = input('To run, this application requires your API key. You can enter that now, or press ENTER and run /api new in-game to generate a new API key. ')
-    conn = sqlite3.connect('./lib/database.db')
-    c = conn.cursor()
-    if api_key == '':
-        c.execute('INSERT INTO INFO(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL) VALUES (?, ?, ?, ?)',(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL,))
-    else:
-        c.execute('INSERT INTO INFO(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL, APIKey) VALUES (?, ?, ?, ?, ?)',(CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL, api_key,))
-    conn.commit()
+                print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET} (Connected from Hypixel)')
+            hypixel = True 
     
 def getrunningclient():
     global client
@@ -457,7 +438,7 @@ if __name__ == "__main__":
     import traceback, sys
 
     try:
-        version = "0.0.2[ALPHA]"
+        version = "0.0.2.1[ALPHA]"
 
         #print title and shit
         printTitle()
@@ -475,6 +456,7 @@ if __name__ == "__main__":
                     /t sc-[mode]-[player] to manually check stats
                     /t swm-[bridge/bw/uhcd] to switch modes
                     /t ac-[on/off] to turn autocheck on or off
+                    /t nosnipe-quit to close the overlay
             ''')
         
         #get blacklist, possibly move this into getstats for live blacklist update?
@@ -492,14 +474,14 @@ if __name__ == "__main__":
             quit()
         
         #see if database needs to be initialized
-        conn = sqlite3.connect('./lib/database.db')
-        c = conn.cursor()
-        try:
-            if len(c.execute('SELECT CriticalWins FROM INFO').fetchall()) == 0:
-                init()
-        except:
-            c.execute('CREATE TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)')
-            init()
+        with open('config.json', 'r') as f:
+            data = json.load(f)
+
+            if not data.get('api_key'):
+                api_key = input('To run, this application requires your API key. You can enter that now, or press ENTER and run /api new in-game to generate a new API key. ')
+                data['api_key'] = api_key
+                with open ('config.json', 'w') as f:
+                    json.dump(data, f)
         
         #get mode and run
         while True:
@@ -512,8 +494,6 @@ if __name__ == "__main__":
                 print('Try again: Please use one of our supported modes')
                 continue
             break
-        params = c.execute('SELECT * FROM INFO').fetchone()
-        conn.close()
         loop.run_until_complete(readFile(getrunningclient()))
     except Exception as e:
         if isinstance(e, requests.exceptions.ConnectionError):

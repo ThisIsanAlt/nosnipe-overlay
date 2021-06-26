@@ -2,7 +2,7 @@
 ; SEE THE DOCUMENTATION FOR DETAILS ON CREATING INNO SETUP SCRIPT FILES!
 
 #define MyAppName "sweting's NoSnipe Overlay"
-#define MyAppVersion "0.0.3[BETA]"
+#define MyAppVersion "0.0.2.1[ALPHA]"
 #define MyAppPublisher "sweting"
 #define MyAppURL "https://thisisanalt.github.io"
 #define MyAppExeName "main.exe"
@@ -13,7 +13,7 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{EFC59BA3-EAC0-4995-BFE8-A9605E471B62}
+AppId={{05ED558D-6E9C-4032-8E7E-2A2596A195C8}
 AppName={#MyAppName}
 AppVersion={#MyAppVersion}
 ;AppVerName={#MyAppName} {#MyAppVersion}
@@ -21,7 +21,7 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 AppUpdatesURL={#MyAppURL}
-DefaultDirName={autopf}\NoSnipe Overlay
+DefaultDirName={autopf}\{#MyAppName}
 ChangesAssociations=yes
 DisableProgramGroupPage=yes
 LicenseFile=C:\Users\aweof\Code\antisnipe\LICENSE.txt
