@@ -220,7 +220,7 @@ async def getBWStats(data, uuid):
         name = data['player']['playername']
     
     #start prestige search while other data is being calculated
-    star = data['player']['achievements']['bedwars_level']
+    star = data['player']['achievements'].get('bedwars_level', 0)
     prestige =  await getBWPrestige(star)
 
     wins = data['player']['stats']['Bedwars'].get('eight_one_wins_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_wins_bedwars', 0) \
