@@ -11,7 +11,6 @@ from asyncio import sleep, get_event_loop
 loop = get_event_loop()
 client = ''
 uuids = {}
-system("color")
 
 async def recieve_api_key(api_key):
     '''
@@ -58,27 +57,30 @@ async def getStats(player, mode):
             data = requests.get(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}").json()
             if not data['success']:
                 print(f'Ratelimited, abandoning attempt for player {player}')
-                return
         elif data['cause'] == 'Invalid API key':
             print('API key invalid! Run "/api new" to generate a new one!')
-            return
         else:    
             print(data['cause'])
-            return
-    if mode == 'bridge':
+    elif data["player"] == 'null':
+        print(f'IGN {player} not found, player is most likely nicked')
+    elif mode == 'bridge':
         await getBridgeStats(data, uuid)
     elif mode == 'bw':
         await getBWStats(data, uuid)
     elif mode == 'uhcd':
         await getUHCDStats(data, uuid)
+    return
 
 async def getBlacklist(player):
-    if requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id'] in blacklist:
-        print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
-                                            Player {player} is blacklisted.
-        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
-    else:
-        print(f'        [INACTIVE AUTOCHECK] Player {player} has joined.')
+    try:
+        if requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id'] in blacklist:
+            print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
+                                                Player {player} is blacklisted.
+            {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
+        else:
+            print(f'        [INACTIVE AUTOCHECK] Player {player} has joined.')
+    except:
+        print(f'IGN {player} not found, player is most likely nicked')
     
 async def getDuelsPrestigeMode(wins):
     if wins < 50:
@@ -106,6 +108,7 @@ async def getBridgeStats(data, uuid):
         name = data['player']['display_name'] 
     except:
         name = data['player']['playername']
+
     wins = data['player']['stats']['Duels'].get('bridge_duel_wins', 0) + data['player']['stats']['Duels'].get('bridge_doubles_wins', 0) \
         + data['player']['stats']['Duels'].get('bridge_four_wins', 0) + data['player']['stats']['Duels'].get('bridge_2v2v2v2_wins', 0) + data['player']['stats']['Duels'].get('bridge_3v3v3v3_wins', 0)
     
@@ -119,7 +122,7 @@ async def getBridgeStats(data, uuid):
 
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Duels']['current_bridge_winstreak']
-    cage = data['player']['stats']['Duels'].get('active_cage', 'cage_async default')[5:]
+    cage = data['player']['stats']['Duels'].get('active_cage', 'cage_default')[5:]
     prestige = await getDuelsPrestigeMode(wins)
     
     if uuid in blacklist:
@@ -283,10 +286,10 @@ def printTitle():
                                                             Overlay by sweting{Fore.RESET}'''
     print(title)
 
-async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
+async def readFile(thefile):  # sourcery no-metrics
     autocheck = True
-    hypixel = True
-    dehku = False
+    party = []
+    lobby = []
     global mode
     input('Press ENTER once connected to Hypixel.')
     print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
@@ -298,119 +301,140 @@ async def readFile(thefile):  # sourcery no-metrics skip: remove-redundant-if
             await sleep(0.1)
 
         #autocheck + blacklist logic, handle server join/leave
-        if hypixel:
+        if '/INFO]: [CHAT]' in line:
 
-            #check if player join
-            if (f"/INFO]: [CHAT]" and "has joined") in line:
+            if autocheck:
+
+                #check if player join
+                if ("has joined (") in line:
+                    player = line.split(' ')[3]
+                    lobby.append(player)
+
+                    if player not in lobby:
+                        await getStats(player, mode)
+
+                #clear place for new table/new players when send to new server
+                elif "Sending you to" in line:
+                    lobby = []
+                    printTitle()
+                    if mode == 'bridge':
+                        await printBridgeTable()
+                    elif mode == 'bw':
+                        await printBWTable()
+                        print(f'{Fore.GREEN}Do /who to update member list!{Fore.RESET}')
+                    #change this line to include other duels mode since they use same table
+                    elif mode == 'uhcd':
+                        await printDuelsModeTable()
+
+                elif "Friend request from " in line:
+                    await getStats(line.split(' ')[-1].strip(), mode)           
+
+                elif "has invited you to join their party!" in line:
+                    await getStats(line.split(' ')[-8].strip(), mode)        
+
+            if ("has joined (") in line:
                 player = line.split(' ')[3]
-
-                if not dehku:
-                    try:
-                        if requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id'] == '6654f4f13302483fa4a15e957d489ce9':
-                            input('lol no you think youd get to use this to dodge shitter? fuck you lmfao\nPress ENTER to quit.')
-                            break
-                        dehku = True
-                    except:
-                        pass
-
-                if autocheck:
-                    await getStats(player, mode)
-                else:
+                if player not in lobby:
+                    lobby.append(player)
                     await getBlacklist(player)
 
-            #clear place for new table/new players when send to new server
-            if ((f"/INFO]: [CHAT] Sending you to") in line) and autocheck:
-                printTitle()
-                if mode == 'bridge':
-                    await printBridgeTable()
-                elif mode == 'bw':
-                    await printBWTable()
-                    print(f'{Fore.GREEN}Do /who to update member list!{Fore.RESET}')
-                #change this line to include other duels mode since they use same table
-                elif mode == 'uhcd':
-                    await printDuelsModeTable()
+            elif "Sending you to" in line:
+                lobby = []
 
-            if '/INFO]: [CHAT] ONLINE:' in line:
-                printTitle()
-                await printBWTable()
-                if client == 'l': players = line[38:-1].split(',') 
-                else: line[47:-1].split(',')
-                for player in players:
-                    await getStats(player[1:], mode)
-                    await sleep(.5)
+            elif ("You have joined" and "party!") in line:
+                split = line.split(' ')
+                if split[-2].endswith("'"):
+                    party.append(split[-2][:-1])
+                else:
+                    party.append(split[-2][:-2])
 
-            #log API key
-            if f"/INFO]: [CHAT] Your new API key is" in line:
-                api_key = line.split(' ')[8][:-1]
+            elif ("You left the party") in line:
+                party = []
+
+            elif 'ONLINE:' in line:
+                players = line[38:] if client == 'l' else line[47:]
+                for player in players.split(','):
+                    player = player.strip()
+                    if player not in lobby:
+                        await getStats(player, mode)
+                        lobby.append(player)
+                        await sleep(.5)
+
+            elif 'Opponent:' in line:
+                opponent = line.split(' ')[-1].strip()
+                if opponent not in lobby:
+                    lobby.append(opponent)
+
+            elif 'Opponents:' in line:
+                opponents = line.split(',')
+                for i in opponents:
+                    lobby.append(i[-1].strip())
+
+            elif "Your new API key is" in line:
+                api_key = line.split(' ')[8].strip()
                 await recieve_api_key(api_key)
                 print(f'{Fore.GREEN}API key "{api_key}" recieved and logged!{Fore.RESET}')
 
-            #handle connect to anything but hypixel
-            if (
-                f"/INFO]: Connecting to" in line
-                and not line.split(',')[0].endswith('hypixel.net')
-            ):
-                print(f'Autocheck {Fore.LIGHTRED_EX}INACTIVE{Fore.RESET} (Connected to Hypixel)')
-                hypixel = False
-            #commands logic, possible move into hypixel clause?
-            if f'/INFO]: [CHAT] Can\'t find a player by the name of' in line:
-                arg = line.split(' ')[11]
+            elif 'Can\'t find a player by the name of' in line:
+                arg = line.split(' ')[11].strip(" '")
 
                 #statcheck
-                if arg.startswith("'sc-"):
-                    if arg.startswith("'sc-b-"):
+                if arg.startswith("sc-"):
+                    if arg.startswith("sc-b-"):
                         if mode != 'bridge':
                             await printBridgeTable()
-                        await getStats(arg[6:-2], 'bridge',)
-                    elif arg.startswith("'sc-uhcd-"):
+                        await getStats(arg[5:], 'bridge',)
+                    elif arg.startswith("sc-uhcd-"):
                         if mode != 'bw':
                             await printDuelsModeTable()
-                        await getStats(arg[9:-2], 'uhcd',)
-                    elif arg.startswith("'sc-bw-"):
+                        await getStats(arg[8:], 'uhcd',)
+                    elif arg.startswith("sc-bw-"):
                         if mode != 'uhcd':
                             await printBWTable()
-                        await getStats(arg[7:-2], 'bw',)
+                        await getStats(arg[6:], 'bw',)
+                    elif arg.startswith('sc-lobby'):
+                        for i in lobby:
+                            await getStats(i, mode)
 
                 #mode swap
-                elif arg.startswith("'swm-"):
-                    if arg.startswith("'swm-b'"):
+                elif arg.startswith("swm-"):
+                    if arg.startswith("'swm-b"):
                         mode = 'bridge'
                         print(f'{Fore.GREEN}Mode swapped to bridge!{Fore.RESET}')
-                    elif arg.startswith("'swm-uhcd'"):
+                    elif arg.startswith("swm-uhcd"):
                         mode = 'uhcd'
                         print(f'{Fore.GREEN}Mode swapped to uhcd!{Fore.RESET}')
-                    elif arg.startswith("'swm-bw'"):
+                    elif arg.startswith("swm-bw"):
                         mode = 'bw'
                         print(f'{Fore.GREEN}Mode swapped to bw!{Fore.RESET}')
                     else:
                         print(f'{Fore.RED}Invalid mode!{Fore.RESET}')
 
                 #autocheck
-                elif arg.startswith("'ac-off'"):
+                elif arg.startswith("ac-off"):
                     autocheck = False
                     print(f'Autocheck {Fore.RED}INACTIVE{Fore.RESET}')
-                elif arg.startswith("'ac-on'"):
+                elif arg.startswith("ac-on"):
                     autocheck = True
                     print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
-                
-                elif arg.startswith("'apikey-register-"):
+
+                elif arg.startswith("apikey-register-"):
                     api_key = arg[7:-2]
                     recieve_api_key(api_key)
                     print(f'{Fore.GREEN}API Key "{api_key}" recieved and logged!{Fore.RESET}')
-                
-                elif arg.startswith("'nosnipe-quit'"):
+
+                elif arg.startswith("nosnipe-help"):
+                    print('''            Commands:
+                /t sc-[mode]-[player] to manually check stats
+                -   /t sc-lobby to check stats of entire lobby
+                /t swm-[bridge/bw/uhcd] to switch modes
+                /t ac-[on/off] to turn autocheck on or off
+                /t apikey-register-[apikey] to manually register API key
+                /t nosnipe-quit to close the overlay
+                /t nosnipe-help to show this message''')
+
+                elif arg.startswith("nosnipe-quit"):
                     quit()
-
-        #disappear when game starts, unused - fix
-        if f'/INFO]: [CHAT]' and ('The Bridge Duel' or 'The Bridge Doubles' or 'The Bridge Teams') in line:
-            #disappear
-            pass
-
-        elif (f"/INFO]: Connecting to" in line
-                and line.split(',')[0].endswith('hypixel.net')):
-            if autocheck:
-                print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET} (Connected from Hypixel)')
-            hypixel = True 
     
 def getrunningclient():
     global client
@@ -438,25 +462,27 @@ if __name__ == "__main__":
     import traceback, sys
 
     try:
-        version = "0.0.2.1[ALPHA]"
+        version = "0.3.0[ALPHA]"
 
         #print title and shit
         printTitle()
         print(f'''
-                {Fore.GREEN}Developed by sweting#9238 on Discord {Fore.BLUE}| Discord:
-                {Fore.GREEN}THIS OVERLAY IS AVAILABLE ON GITHUB
+            {Fore.GREEN}Developed by sweting#9238 on Discord {Fore.BLUE}| Discord: https://discord.gg/HsqHkzp2pj
+            {Fore.GREEN}THIS OVERLAY IS AVAILABLE ON GITHUB
 
-                {Fore.RED}This overlay is closed-source to prevent circumvention. To help improve the overlay and report known 
-                cheaters/alts, please join the Discord.
+            {Fore.RED}This overlay is closed-source to prevent circumvention. To help improve the overlay and report known 
+            cheaters/alts, please join the Discord.{Fore.RESET}
 
-                https://discord.gg/HsqHkzp2pj{Fore.RESET}
-                {version}
+            {Fore.LIGHTRED_EX}THIS IS A USE-AT-OWN-RISK OVERLAY. While theoretically against Hypixel rules, no one
+            has been banned for similar programs so far.{Fore.RESET}
 
-                Commands:
-                    /t sc-[mode]-[player] to manually check stats
-                    /t swm-[bridge/bw/uhcd] to switch modes
-                    /t ac-[on/off] to turn autocheck on or off
-                    /t nosnipe-quit to close the overlay
+            {version}
+
+            Commands:
+                /t sc-[mode]-[player] to manually check stats
+                /t swm-[bridge/bw/uhcd] to switch modes
+                /t ac-[on/off] to turn autocheck on or off
+                /t nosnipe-quit to close the overlay
             ''')
         
         #get blacklist, possibly move this into getstats for live blacklist update?
