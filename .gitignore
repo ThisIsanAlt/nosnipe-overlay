@@ -110,6 +110,8 @@ ENV/
 env.bak/
 venv.bak/
 Scripts/
+Output/
+.vscode/
 pyvenv.cfg
 
 # Spyder project settings
@@ -129,8 +131,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
-
-Output/
-
 #api key and shit
 config.json
