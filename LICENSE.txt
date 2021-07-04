@@ -4,8 +4,8 @@ TL;DR AT BOTTOM
 
 (c) 2021 sweting - ALL RIGHTS RESERVED
 
-Your use of this application ("Overlay") is subject to these terms. These terms are subject to change.
-without notice.
+Your use of this application ("Overlay") is subject to these terms. 
+These terms are subject to change without notice.
 
 1 - PROTECTION OF THIS SOFTWARE:
     You may not reproduce or tamper with this software in any way, 
