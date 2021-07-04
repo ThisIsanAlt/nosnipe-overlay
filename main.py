@@ -468,10 +468,9 @@ if __name__ == "__main__":
         printTitle()
         print(f'''
             {Fore.GREEN}Developed by sweting#9238 on Discord {Fore.BLUE}| Discord: https://discord.gg/HsqHkzp2pj
-            {Fore.GREEN}THIS OVERLAY IS AVAILABLE ON GITHUB
+            {Fore.GREEN}THIS OVERLAY IS 100% FREE ON GITHUB - OPEN SOURCE - https://github.com/ThisIsanAlt/nosnipe-overlay
 
-            {Fore.RED}This overlay is closed-source to prevent circumvention. To help improve the overlay and report known 
-            cheaters/alts, please join the Discord.{Fore.RESET}
+            {Fore.RED}To help improve the overlay and report known cheaters/alts, please join the Discord.{Fore.RESET}
 
             {Fore.LIGHTRED_EX}THIS IS A USE-AT-OWN-RISK OVERLAY. While theoretically against Hypixel rules, no one
             has been banned for similar programs so far.{Fore.RESET}
