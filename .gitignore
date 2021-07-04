@@ -130,4 +130,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-.Output/
+Output/
+
+#api key and shit
+config.json
