@@ -1,6 +1,3 @@
-from threading import Thread
-from tkinter import *
-import time
 import os
 from os import system
 import platform
@@ -10,149 +7,14 @@ import json
 import math
 import traceback, sys
 import time
-root = Tk()
-alive = True
+from asyncio import sleep, get_event_loop
+'TABLE INFO(APIKey, CriticalWins, WarningWins, CriticalNWLVL, WarningNWLVL)'
+
+loop = get_event_loop()
+client = ''
 uuids = {}
-TitleLabels = []
-DataLabels = []
 
-def toggle_title_bar():
-    global OverrideRedirect
-    if OverrideRedirect:
-        root.overrideredirect(False)
-        OverrideRedirect = False
-    else:
-        root.overrideredirect(True)
-        OverrideRedirect = True
-
-def on_mode_update(*args):
-    mode = ModeSetting.get()
-    print(mode)
-    with open('config.json', 'r') as f:
-        data = json.load(f)
-        data['current_mode'] = mode.lower()
-        with open('config.json', 'w') as f:
-            json.dump(data, f)
-
-def create_new_window():
-    global ModeSetting
-    settingsWindow = Toplevel(root)
-    settingsWindow.wm_attributes("-topmost", True)
-
-    ModeSetting = StringVar(settingsWindow)
-    ModeSetting.set("Bridge")
-    ModeSetting.trace_add('write', on_mode_update)
-
-    RepositionToggle = Button(settingsWindow, text = "Reposition Overlay (Toggle)", command=toggle_title_bar)
-    RepositionToggle.grid(column=0, row=0, padx=(10,5), pady=(10,10), columnspan=2)
-
-    ChangeMode = Label(settingsWindow, text = "Change Mode")
-    ChangeMode.grid(row=1, column=0, padx=5, pady=(10,5))
-
-    ModeMenu = OptionMenu(settingsWindow, ModeSetting, "Bridge", "Bedwars", "UHCDuels", "Skywars")
-    ModeMenu.grid(row=1, column=1, padx=5, pady=(5,10))
-
-
-def init_label_duels(terminal):
-    playerlabel = Label(terminal, font=('Calibri',20), text='PLAYER', bg='black', fg='white', padx=100, pady=1)
-    playerlabel.grid(row=0, column=0, sticky=W)
-
-    taglabel = Label(terminal, font=('Calibri',20), text='TAG', bg='black', fg='white', padx=20, pady=1)
-    taglabel.grid(row=0, column=1, sticky=W)
-
-    wslabel = Label(terminal, font=('Calibri',20), text='WS', bg='black', fg='white', padx=20, pady=1)
-    wslabel.grid(row=0, column=2, sticky=W)
-
-    kdrlabel = Label(terminal, font=('Calibri',20), text='KDR', bg='black', fg='white', padx=20, pady=1)
-    kdrlabel.grid(row=0, column=3, sticky=W)
-
-    wlrlabel = Label(terminal, font=('Calibri',20), text='WLR', bg='black', fg='white', padx=20, pady=1)
-    wlrlabel.grid(row=0, column=4, sticky=W)
-
-    killslabel = Label(terminal, font=('Calibri',20), text='KILLS', bg='black', fg='white', padx=20, pady=1)
-    killslabel.grid(row=0, column=5, sticky=W)
-
-    winslabel = Label(terminal, font=('Calibri',20), text='WINS', bg='black', fg='white', padx=20, pady=1)
-    winslabel.grid(row=0, column=6, sticky=W)
-
-def init_label_bridge(terminal):
-    playerlabel = Label(terminal, font=('Calibri',20), text='PLAYER', bg='black', fg='white', padx=100, pady=1)
-    playerlabel.grid(row=0, column=0, sticky=W)
-
-    taglabel = Label(terminal, font=('Calibri',20), text='TAG', bg='black', fg='white', padx=20, pady=1)
-    taglabel.grid(row=0, column=1, sticky=W)
-
-    wslabel = Label(terminal, font=('Calibri',20), text='WS', bg='black', fg='white', padx=20, pady=1)
-    wslabel.grid(row=0, column=2, sticky=W)
-
-    wlrlabel = Label(terminal, font=('Calibri',20), text='WLR', bg='black', fg='white', padx=20, pady=1)
-    wlrlabel.grid(row=0, column=3, sticky=W)
-
-    winslabel = Label(terminal, font=('Calibri',20), text='WINS', bg='black', fg='white', padx=20, pady=1)
-    winslabel.grid(row=0, column=4, sticky=W)
-
-    cagelabel = Label(terminal, font=('Calibri',20), text='CAGE', bg='black', fg='white', padx=20, pady=1)
-    cagelabel.grid(row=0, column=5, sticky=W)
-
-def init_label_bw(terminal):
-    playerlabel = Label(terminal, font=('Calibri',20), text='PLAYER', bg='black', fg='white', padx=100, pady=1)
-    playerlabel.grid(row=0, column=0, sticky=W)
-
-    taglabel = Label(terminal, font=('Calibri',20), text='TAG', bg='black', fg='white', padx=20, pady=1)
-    taglabel.grid(row=0, column=1, sticky=W)
-
-    wslabel = Label(terminal, font=('Calibri',20), text='WS', bg='black', fg='white', padx=20, pady=1)
-    wslabel.grid(row=0, column=2, sticky=W)
-
-    kdrlabel = Label(terminal, font=('Calibri',20), text='FKDR', bg='black', fg='white', padx=20, pady=1)
-    kdrlabel.grid(row=0, column=3, sticky=W)
-
-    kdrlabel = Label(terminal, font=('Calibri',20), text='FINALS', bg='black', fg='white', padx=20, pady=1)
-    kdrlabel.grid(row=0, column=4, sticky=W)
-
-    wlrlabel = Label(terminal, font=('Calibri',20), text='WLR', bg='black', fg='white', padx=20, pady=1)
-    wlrlabel.grid(row=0, column=5, sticky=W)
-
-    playerlabel = Label(terminal, font=('Calibri',20), text='WINS', bg='black', fg='white', padx=20, pady=1)
-    playerlabel.grid(row=0, column=6, sticky=W)
-
-def init_tkinter(root):
-    global OverrideRedirect
-    root.geometry("1000x500+50+50")
-    root.attributes('-alpha', 0.8)
-    root.wm_attributes("-topmost", True)
-    root.resizable(False, False)
-    root['background'] = '#000000'
-    root.overrideredirect(True)
-    OverrideRedirect = True
-
-    Menubar = Frame(root, bd=0, highlightthickness=0, bg='#222222', height=25, width=1000)
-    Menubar.grid(row=0, column=0, sticky=W)
-
-    SettingsButton = Button(Menubar, font=('Calibri', 10), text='Settings', command=create_new_window)
-    SettingsButton.grid(row=0, column=1, sticky=W, pady=1)
-
-    QuitButton = Button(Menubar, font=('Calibri', 10), text='Quit', command=quit)
-    QuitButton.grid(row=0, column=0, sticky=W, padx=(10,0), pady=1)
-
-    # a canvas for the main area of the window
-    Terminal = Frame(root, bd=0, highlightthickness=0, bg='black', height=400, width=1000)
-    Terminal.grid(row=1, column=0, sticky=W, pady=1)
-    
-    with open('config.json', 'r') as f:
-        data = json.load(f)
-
-    if data['current_mode'] == 'bridge':
-        init_label_bridge(Terminal)
-    elif data['current_mode'] == 'bedwars':
-        init_label_bw(Terminal)
-    elif data['current_mode'] == 'uhcduels':
-        init_label_duels(Terminal)
-    else:
-        data['current_mode'] = 'bridge'
-        init_label_bw(Terminal)
-
-def recieve_api_key(api_key):
+async def recieve_api_key(api_key):
     '''
     func to recieve and input api key into db
     '''
@@ -172,7 +34,7 @@ def get_db_info():
         data = json.load(f)
         return data.get('api_key')
 
-def get_stats(player, mode):
+async def get_stats(player, mode):
     global uuids
     api_key = get_db_info()
 
@@ -196,7 +58,7 @@ def get_stats(player, mode):
 
     if not data['success']:
         if data['cause'] == 'Key throttle':
-            time.sleep(1)
+            await sleep(1)
             data = requests.get(f"https://api.hypixel.net/player?key={api_key}&uuid={uuid}").json()
             if not data['success']:
                 print(f'Ratelimited, abandoning attempt for player {player}')
@@ -207,14 +69,25 @@ def get_stats(player, mode):
     elif data["player"] == 'null':
         print(f'IGN {player} not found, player is most likely nicked')
     elif mode == 'bridge':
-        get_bridge_stats(data, uuid)
-    elif mode == 'bedwars':
-        get_bw_stats(data, uuid)
-    elif mode == 'uhcduels':
-        get_uhcd_stats(data, uuid)
+        await get_bridge_stats(data, uuid)
+    elif mode == 'bw':
+        await get_bw_stats(data, uuid)
+    elif mode == 'uhcd':
+        await get_uhcd_stats(data, uuid)
     return
+
+async def get_blacklist(player):
+    try:
+        if requests.get(f"https://api.mojang.com/users/profiles/minecraft/{player}").json()['id'] in blacklist:
+            print(f'''        {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
+                                                Player {player} is blacklisted.
+            {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}''')
+        else:
+            print(f'        [INACTIVE AUTOCHECK] Player {player} has joined.')
+    except:
+        print(f'IGN {player} not found, player is most likely nicked')
     
-def get_duels_prestige_mode(wins):
+async def get_duels_prestige_mode(wins):
     if wins < 50:
         return wins
     elif wins < 100:
@@ -234,7 +107,7 @@ def get_duels_prestige_mode(wins):
     else:
         return f'{Fore.MAGENTA}{wins}{Fore.RESET}'
 
-def get_bridge_stats(data, uuid):
+async def get_bridge_stats(data, uuid):
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name'] 
@@ -255,7 +128,7 @@ def get_bridge_stats(data, uuid):
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Duels']['current_bridge_winstreak']
     cage = data['player']['stats']['Duels'].get('active_cage', 'cage_default')[5:]
-    prestige = get_duels_prestige_mode(wins)
+    prestige = await get_duels_prestige_mode(wins)
     
     if uuid in blacklist:
         print(f'''          {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
@@ -272,7 +145,7 @@ def get_bridge_stats(data, uuid):
     else:
         print(f'         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} | {cage}')
 
-def get_uhcd_stats(data, uuid):
+async def get_uhcd_stats(data, uuid):
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name']
@@ -292,7 +165,7 @@ def get_uhcd_stats(data, uuid):
 
     networkLevel = (math.sqrt((2 * data['player']['networkExp']) + 30625) / 50) - 2.5
     ws = data['player']['stats']['Duels'].get('current_uhc_winstreak')
-    prestige = get_duels_prestige_mode(wins)
+    prestige = await get_duels_prestige_mode(wins)
     
     if uuid in blacklist:
         print(f'''          {Fore.RED}---------------------{Fore.YELLOW}BLACKLISTED{Fore.RED}---------------------{Fore.RESET}
@@ -309,7 +182,7 @@ def get_uhcd_stats(data, uuid):
     else:
         print(f'         {name} | {prestige} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws}')
 
-def get_bw_prestige(star):  # sourcery no-metrics
+async def get_bw_prestige(star):  # sourcery no-metrics
     if star < 100:
         return f'{Fore.LIGHTBLACK_EX}{star}{Fore.RESET}'
     elif star < 200 or (star < 1200 and star > 1100):
@@ -347,7 +220,7 @@ def get_bw_prestige(star):  # sourcery no-metrics
     else:
         return star
 
-def get_bw_stats(data, uuid):
+async def get_bw_stats(data, uuid):
     blacklist = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()['blacklist']
     try:
         name = data['player']['display_name'] 
@@ -356,7 +229,7 @@ def get_bw_stats(data, uuid):
     
     #start prestige search while other data is being calculated
     star = data['player']['achievements'].get('bedwars_level', 0)
-    prestige =  get_bw_prestige(star)
+    prestige =  await get_bw_prestige(star)
 
     wins = data['player']['stats']['Bedwars'].get('eight_one_wins_bedwars', 0) + data['player']['stats']['Bedwars'].get('eight_two_wins_bedwars', 0) \
         + data['player']['stats']['Bedwars'].get('four_three_wins_bedwars', 0)  + data['player']['stats']['Bedwars'].get('four_four_wins_bedwars', 0)
@@ -394,13 +267,13 @@ def get_bw_stats(data, uuid):
     else:
         print(f'         {name} | ☆{prestige} | {wins} | {round(fkdr, 2)} | {round(wlr, 2)} | {round(networkLevel, 2)} | {ws} ')
 
-def print_bridge_table():
+async def print_bridge_table():
     print('''          IGN    | Wins | WLR | NW LVL | WS | Active Cage''')
 
-def print_duels_mode_table():
+async def print_duels_mode_table():
     print('''          IGN    | Wins | WLR | NW LVL | WS ''')
 
-def print_bw_table():
+async def print_bw_table():
     print('''          IGN    | Star | Wins | FKDR | WLR | NW LVL | WS ''')
 
 def print_title():
@@ -417,7 +290,7 @@ def print_title():
                                                             Overlay by sweting{Fore.RESET}'''
     print(title)
 
-def read_file(thefile):
+async def read_file(thefile):  # sourcery no-metrics
     autocheck = True
     party = []
     lobby = []
@@ -426,10 +299,10 @@ def read_file(thefile):
     print(f'Autocheck {Fore.LIGHTGREEN_EX}ACTIVE{Fore.RESET}')
     thefile.seek(0,2)
 
-    while thread2.is_alive():
+    while True:
         line = thefile.readline()
         if not line:
-            time.sleep(0.1)
+            await sleep(0.1)
 
         #autocheck + blacklist logic, handle server join/leave
         if '/INFO]: [CHAT]' in line:
@@ -442,34 +315,35 @@ def read_file(thefile):
                     lobby.append(player)
 
                     if player not in lobby:
-                        get_stats(player, mode)
+                        await get_stats(player, mode)
 
                 #clear place for new table/new players when send to new server
                 elif "Sending you to" in line:
                     lobby = []
                     print_title()
                     if mode == 'bridge':
-                        print_bridge_table()
-                    elif mode == 'bedwars':
-                        print_bw_table()
+                        await print_bridge_table()
+                    elif mode == 'bw':
+                        await print_bw_table()
                         print(f'{Fore.GREEN}Do /who to update member list!{Fore.RESET}')
                     #change this line to include other duels mode since they use same table
-                    elif mode == 'uhcduels':
-                        print_duels_mode_table()
+                    elif mode == 'uhcd':
+                        await print_duels_mode_table()
 
                 elif "Friend request from " in line:
-                    get_stats(line.split(' ')[-1].strip(), mode)           
+                    await get_stats(line.split(' ')[-1].strip(), mode)           
 
                 elif "has invited you to join their party!" in line:
-                    get_stats(line.split(' ')[-8].strip(), mode)
+                    await get_stats(line.split(' ')[-8].strip(), mode)
 
                 elif ("has invited you to join" and "'" and "party!") in line:
-                    get_stats(line.split(' ')[-2].strip().strip("'s"), mode)
+                    await get_stats(line.split(' ')[-2].strip().strip("'s"), mode)
 
             if ("has joined (") in line:
                 player = line.split(' ')[3]
                 if player not in lobby:
                     lobby.append(player)
+                    await get_blacklist(player)
 
             elif "Sending you to" in line:
                 lobby = []
@@ -489,8 +363,9 @@ def read_file(thefile):
                 for player in players.split(','):
                     player = player.strip()
                     if player not in lobby:
-                        get_stats(player, mode)
+                        await get_stats(player, mode)
                         lobby.append(player)
+                        await sleep(.5)
 
             elif 'Opponent:' in line:
                 opponent = line.split(' ')[-1].strip()
@@ -505,7 +380,7 @@ def read_file(thefile):
 
             elif "Your new API key is" in line:
                 api_key = line.split(' ')[8].strip()
-                recieve_api_key(api_key)
+                await recieve_api_key(api_key)
                 print(f'{Fore.GREEN}API key "{api_key}" recieved and logged!{Fore.RESET}')
 
             elif 'Can\'t find a player by the name of' in line:
@@ -515,19 +390,19 @@ def read_file(thefile):
                 if arg.startswith("sc-"):
                     if arg.startswith("sc-b-"):
                         if mode != 'bridge':
-                            print_bridge_table()
-                        get_stats(arg[5:], 'bridge',)
+                            await print_bridge_table()
+                        await get_stats(arg[5:], 'bridge',)
                     elif arg.startswith("sc-uhcd-"):
-                        if mode != 'bedwars':
-                            print_duels_mode_table()
-                        get_stats(arg[8:], 'uhcduels',)
+                        if mode != 'bw':
+                            await print_duels_mode_table()
+                        await get_stats(arg[8:], 'uhcd',)
                     elif arg.startswith("sc-bw-"):
-                        if mode != 'uhcduels':
-                            print_bw_table()
-                        get_stats(arg[6:], 'bedwars',)
+                        if mode != 'uhcd':
+                            await print_bw_table()
+                        await get_stats(arg[6:], 'bw',)
                     elif arg.startswith('sc-lobby'):
                         for i in lobby:
-                            get_stats(i, mode)
+                            await get_stats(i, mode)
 
                 #mode swap
                 elif arg.startswith("swm-"):
@@ -535,10 +410,10 @@ def read_file(thefile):
                         mode = 'bridge'
                         print(f'{Fore.GREEN}Mode swapped to bridge!{Fore.RESET}')
                     elif arg.startswith("swm-uhcd"):
-                        mode = 'uhcduels'
+                        mode = 'uhcd'
                         print(f'{Fore.GREEN}Mode swapped to uhcd!{Fore.RESET}')
                     elif arg.startswith("swm-bw"):
-                        mode = 'bedwars'
+                        mode = 'bw'
                         print(f'{Fore.GREEN}Mode swapped to bw!{Fore.RESET}')
                     else:
                         print(f'{Fore.RED}Invalid mode!{Fore.RESET}')
@@ -563,12 +438,124 @@ def read_file(thefile):
                 /t swm-[bridge/bw/uhcd] to switch modes
                 /t ac-[on/off] to turn autocheck on or off
                 /t apikey-register-[apikey] to manually register API key
+                /t nosnipe-quit to close the overlay
                 /t nosnipe-help to show this message''')
 
-if __name__ == "__main__":
-    thread2 = Thread(target = init_tkinter, args=(root,))
-    thread = Thread(target = read_file)
-    thread2.start()
-    thread.start()
+                elif arg.startswith("nosnipe-quit"):
+                    quit()
+    
+def get_running_client():
+    global client
+    '''
+    get a game dir to connect to
+    '''
 
-    root.mainloop()
+    with open('config.json', 'r') as f:
+        data = json.load(f)
+
+    while True:
+        client = str(input('''Which client would you like to connect to?
+    l - Lunar Client
+    b - Badlion Client
+    v - Vanilla/Forge OR default log location
+    
+    CUSTOM DIRECTORIES: To set or use a custom directory, enter the key 
+    you have set for your custom directory or enter "CUSTOM" to set one.'''))
+        if client == 'l':
+            logfile = open(os.getenv("APPDATA")[:-16]+"/.lunarclient/offline/1.8/logs/latest.log", "r")
+        elif client == 'b':
+            logfile = open(os.getenv("APPDATA")+"/.minecraft/logs/blclient/chat/latest.log", "r")
+        elif client == 'v':
+            logfile = open(os.getenv("APPDATA")+"/.minecraft/logs/latest.log", "r")
+        elif not data.get['log_locations'](client):
+            logfile = open(data['log_locations'].get(client))
+        elif client == 'CUSTOM':
+            while True:
+                file = input('Please paste the custom directory. This can be done by going to the \n\
+                    log folder in Windows explorer, doubleclicking, and copying what is shown.')
+        else:
+            print(f'''Try again: Your input should be either "l", "b", "v" OR the key you have assigned to a custom directory.
+    Your set custom directories:
+    {data['log_locations']}
+    
+    To set a custom directory''')
+            continue
+        return logfile
+
+if __name__ == "__main__":
+    if 'windows' not in platform.system().lower():
+        input('This app is not designed for non-Windows platforms. Press ENTER to quit.')
+        quit()
+
+    try:
+        version = "0.3.0[ALPHA]"
+
+        #print title and shit
+        print_title()
+        print(f'''
+            {Fore.GREEN}Developed by sweting#9238 on Discord {Fore.BLUE}| Discord: https://discord.gg/HsqHkzp2pj
+            {Fore.GREEN}THIS OVERLAY IS 100% FREE ON GITHUB - OPEN SOURCE - https://github.com/ThisIsanAlt/nosnipe-overlay
+
+            {Fore.RED}To help improve the overlay and report known cheaters/alts, please join the Discord.{Fore.RESET}
+
+            {Fore.LIGHTRED_EX}THIS IS A USE-AT-OWN-RISK OVERLAY.{Fore.RESET}
+
+            {version}
+
+            Commands:
+                /t sc-[mode]-[player] to manually check stats
+                /t swm-[bridge/bw/uhcd] to switch modes
+                /t ac-[on/off] to turn autocheck on or off
+                /t nosnipe-quit to close the overlay
+            ''')
+
+        #get version and display messages
+        meta = requests.get(f"https://thisisanalt.github.io/data/basic_info.json").json()
+        print(meta['version-messages'].get("all", ''))
+        print(meta['version-messages'].get(version, ''))
+
+        #check if version outdated and if version blacklisted
+        if meta['version'] != version:
+            input('You are not on the latest version! Get the latest version at https://thisisanalt.github.io/nosnipe.html \nPress enter to continue.')
+        if version in meta['version-blacklist']:
+            input(f'{Fore.YELLOW} This version is blacklisted and cannot be used. Please update to the latest version at https://thisisanalt.github.io/nosnipe.html\n\
+            Press ENTER to quit.')
+            quit()
+
+        #see if database needs to be initialized
+        with open('config.json', 'r') as f:
+            data = json.load(f)
+
+            if not data.get('api_key'):
+                api_key = input('To run, this application requires your API key. You can enter that now, or press ENTER and run /api new in-game to generate a new API key. ')
+                data['api_key'] = api_key
+                with open ('config.json', 'w') as f:
+                    json.dump(data, f)
+
+        #get mode and run
+        while True:
+            mode = input('''Supported modes:
+        - "bridge"
+        - "bw"
+        - "uhcd"
+    Select which mode to display stats from: ''')
+            if mode not in ['bridge', 'bw', 'uhcd']:
+                print('Try again: Please use one of our supported modes')
+                continue
+            break
+        loop.run_until_complete(read_file(get_running_client()))
+
+    except Exception as e:
+        if isinstance(e, requests.exceptions.ConnectionError):
+            input('Could not connect to API. Have you checked your network? Quitting in 10 seconds.')
+            for i in range(10, 1, -1):
+                print(i)
+                time.sleep(1)
+            quit()
+        elif isinstance(e, KeyboardInterrupt):
+             quit()
+        else:
+            print(f'{Fore.LIGHTRED_EX}EXCEPTION OCCURED:{Fore.YELLOW}')
+            traceback.print_exception(type(e), e, e.__traceback__, file=sys.stderr)
+            print(f'\nVERSION: {version}')
+            input(f'{Fore.GREEN}^^ Please copy the above in yellow and paste it in #bug-reports in the Discord or create an issue on our Github!\n\n{Fore.RESET}Press ENTER to quit.')
